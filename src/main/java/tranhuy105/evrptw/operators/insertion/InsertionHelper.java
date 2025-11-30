@@ -1,9 +1,6 @@
 package tranhuy105.evrptw.operators.insertion;
 
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
 import tranhuy105.evrptw.algorithm.RouteEvaluator;
 import tranhuy105.evrptw.model.Instance;
@@ -33,13 +30,15 @@ public class InsertionHelper {
     }
 
     /**
-     * Find best position to insert customer in a route
+     * Find best position to insert customer in a route.
+     * Evaluates ALL positions to ensure best solution quality.
+     * Optimized: uses in-place evaluation to avoid ArrayList creation.
      */
     public InsertionResult findBestPosition(Solution solution, int routeIdx, int customerId) {
         List<Integer> route = solution.getRoutes().get(routeIdx);
         int routeLen = route.size();
 
-        // Cache route cost
+        // Cache route cost (computed once)
         RouteStats oldStats = evaluator.evaluate(route);
         double costOld = oldStats.cost();
 
@@ -48,45 +47,14 @@ public class InsertionHelper {
         Integer bestStationBefore = null;
         Integer bestStationAfter = null;
 
-        // Get nearest stations for this customer
-        Map<Integer, List<Integer>> nearestStations = instance.getNearestStations();
-        List<Integer> nearestStationIds = nearestStations.getOrDefault(customerId, new ArrayList<>());
-        List<Integer> candidateStations = nearestStationIds.subList(0, Math.min(3, nearestStationIds.size()));
+        // Get nearest stations for this customer (use more for better coverage)
+        List<Integer> nearestStationIds = instance.getNearestStations().get(customerId);
+        int numStations = nearestStationIds != null ? Math.min(4, nearestStationIds.size()) : 0;
 
-        // Quick distance estimates for all positions
-        List<PositionEstimate> estimates = new ArrayList<>();
+        // Evaluate ALL positions for best quality
         for (int pos = 0; pos <= routeLen; pos++) {
-            int prevId = pos > 0 ? route.get(pos - 1) : 0;
-            int nextId = pos < routeLen ? route.get(pos) : 0;
-            double quickCost = quickInsertionCost(prevId, nextId, customerId);
-            estimates.add(new PositionEstimate(quickCost, pos));
-        }
-
-        // Sort by quick cost estimate
-        estimates.sort(Comparator.comparingDouble(e -> e.cost));
-
-        // Evaluate positions (prioritize promising ones)
-        int positionsEvaluated = 0;
-        int maxPositions = Math.min(routeLen + 1, Math.max(5, (routeLen + 1) / 2));
-
-        for (PositionEstimate estimate : estimates) {
-            int pos = estimate.position;
-            
-            // Early termination if estimate is much worse than best
-            // Python: threshold = best_cost * 1.1 if best_cost != inf else inf
-            if (bestCost != Double.POSITIVE_INFINITY && estimate.cost > bestCost * 1.1) {
-                continue;
-            }
-
-            positionsEvaluated++;
-            if (positionsEvaluated > maxPositions && bestPos != -1) {
-                break;
-            }
-
-            // Scenario 1: Direct insertion
-            List<Integer> newRoute = new ArrayList<>(route);
-            newRoute.add(pos, customerId);
-            RouteStats newStats = evaluator.evaluate(newRoute);
+            // Scenario 1: Direct insertion (no ArrayList creation)
+            RouteStats newStats = evaluator.evaluateWithInsertion(route, pos, customerId);
             double delta = newStats.cost() - costOld;
 
             if (delta < bestCost) {
@@ -97,14 +65,12 @@ public class InsertionHelper {
             }
 
             // Scenario 2: Insert with station if battery violation
-            if (newStats.batteryViolation() > 0 && !candidateStations.isEmpty()) {
-                // Only try first 2 nearest stations for speed
-                for (int stId : candidateStations.subList(0, Math.min(2, candidateStations.size()))) {
-                    // Station BEFORE customer
-                    List<Integer> rBefore = new ArrayList<>(route);
-                    rBefore.add(pos, stId);
-                    rBefore.add(pos + 1, customerId);
-                    RouteStats statsBefore = evaluator.evaluate(rBefore);
+            if (newStats.batteryViolation() > 0 && numStations > 0) {
+                for (int s = 0; s < numStations; s++) {
+                    int stId = nearestStationIds.get(s);
+                    
+                    // Station BEFORE customer (no ArrayList creation)
+                    RouteStats statsBefore = evaluator.evaluateWithDoubleInsertion(route, pos, stId, customerId);
                     
                     if (statsBefore.batteryViolation() < 1e-6 && statsBefore.cost() - costOld < bestCost) {
                         bestCost = statsBefore.cost() - costOld;
@@ -113,11 +79,8 @@ public class InsertionHelper {
                         bestStationAfter = null;
                     }
 
-                    // Station AFTER customer
-                    List<Integer> rAfter = new ArrayList<>(route);
-                    rAfter.add(pos, customerId);
-                    rAfter.add(pos + 1, stId);
-                    RouteStats statsAfter = evaluator.evaluate(rAfter);
+                    // Station AFTER customer (no ArrayList creation)
+                    RouteStats statsAfter = evaluator.evaluateWithDoubleInsertion(route, pos, customerId, stId);
                     
                     if (statsAfter.batteryViolation() < 1e-6 && statsAfter.cost() - costOld < bestCost) {
                         bestCost = statsAfter.cost() - costOld;
@@ -130,18 +93,5 @@ public class InsertionHelper {
         }
 
         return new InsertionResult(bestPos, bestCost, bestStationBefore, bestStationAfter);
-    }
-
-    /**
-     * Helper class for position estimates
-     */
-    private static class PositionEstimate {
-        final double cost;
-        final int position;
-
-        PositionEstimate(double cost, int position) {
-            this.cost = cost;
-            this.position = position;
-        }
     }
 }

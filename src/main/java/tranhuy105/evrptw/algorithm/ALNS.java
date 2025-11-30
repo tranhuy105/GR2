@@ -13,6 +13,7 @@ import tranhuy105.evrptw.operators.insertion.GreedyInsertion;
 import tranhuy105.evrptw.operators.insertion.InsertionHelper;
 import tranhuy105.evrptw.operators.insertion.InsertionOperator;
 import tranhuy105.evrptw.operators.insertion.RegretInsertion;
+import tranhuy105.evrptw.operators.removal.GreedyRouteRemoval;
 import tranhuy105.evrptw.operators.removal.RandomRemoval;
 import tranhuy105.evrptw.operators.removal.RandomRouteRemoval;
 import tranhuy105.evrptw.operators.removal.RemovalOperator;
@@ -78,13 +79,14 @@ public class ALNS {
         this.stationInsertion = new GreedyStationInsertion(instance);
         this.evaluator = new RouteEvaluator(instance);
 
-        // Initialize removal operators
+        // Initialize removal operators (6 operators matching Python)
         this.removalOperators = new LinkedHashMap<>();
         removalOperators.put("random", new RandomRemoval());
         removalOperators.put("shaw", new ShawRemoval());
         removalOperators.put("worst_distance", new WorstDistanceRemoval());
         removalOperators.put("worst_time", new WorstTimeRemoval());
         removalOperators.put("random_route", new RandomRouteRemoval());
+        removalOperators.put("greedy_route", new GreedyRouteRemoval());
 
         // Initialize insertion operators
         this.insertionOperators = new LinkedHashMap<>();
@@ -191,7 +193,8 @@ public class ALNS {
                 maxRemove = Math.max(2, (int) (nCustomers * 0.4));
             }
             
-            if (removalOpName.equals("random_route")) {
+            if (removalOpName.equals("random_route") || removalOpName.equals("greedy_route")) {
+                // Route removal operators don't use q parameter
                 removedCustomers = removalOperators.get(removalOpName).remove(tempSol, 0);
             } else {
                 int q = random.nextInt(maxRemove - minRemove + 1) + minRemove;

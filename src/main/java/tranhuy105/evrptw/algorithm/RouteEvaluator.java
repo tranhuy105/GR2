@@ -4,40 +4,78 @@ import java.util.List;
 
 import tranhuy105.evrptw.model.Instance;
 import tranhuy105.evrptw.model.Node;
-import tranhuy105.evrptw.model.NodeType;
 import tranhuy105.evrptw.model.RouteStats;
 import tranhuy105.evrptw.model.Solution;
 import tranhuy105.evrptw.util.Constants;
 
 /**
- * Evaluates routes and calculates costs with constraint violations
+ * Evaluates routes and calculates costs with constraint violations.
+ * Optimized with cached primitive arrays for O(1) node data access.
  */
 public class RouteEvaluator {
     private final Instance instance;
+    
+    // Cached primitive arrays for fast access (avoid Node object lookups)
+    private final double[][] distMatrix;
+    private final double[][] travelTimeMatrix;
+    private final double[][] energyMatrix;
+    private final double[] readyTimes;
+    private final double[] dueTimes;
+    private final double[] demands;
+    private final double[] serviceTimes;
+    private final int[] nodeTypes; // 0=depot, 1=customer, 2=station
+    
+    private final double qBattery;
+    private final double cCapacity;
+    private final double gRefuelRate;
+    private final double depotDue;
 
     public RouteEvaluator(Instance instance) {
         this.instance = instance;
+        
+        // Cache matrices
+        this.distMatrix = instance.getDistanceMatrix();
+        this.travelTimeMatrix = instance.getTravelTimeMatrix();
+        this.energyMatrix = instance.getEnergyMatrix();
+        
+        // Cache parameters
+        this.qBattery = instance.getBatteryCapacity();
+        this.cCapacity = instance.getCargoCapacity();
+        this.gRefuelRate = instance.getRefuelRate();
+        this.depotDue = instance.getDepot().getDueTime();
+        
+        // Build primitive arrays for node data (O(1) access vs O(1) with object overhead)
+        List<Node> allNodes = instance.getAllNodes();
+        int n = allNodes.size();
+        this.readyTimes = new double[n];
+        this.dueTimes = new double[n];
+        this.demands = new double[n];
+        this.serviceTimes = new double[n];
+        this.nodeTypes = new int[n];
+        
+        for (int i = 0; i < n; i++) {
+            Node node = allNodes.get(i);
+            readyTimes[i] = node.getReadyTime();
+            dueTimes[i] = node.getDueTime();
+            demands[i] = node.getDemand();
+            serviceTimes[i] = node.getServiceTime();
+            nodeTypes[i] = switch (node.getType()) {
+                case DEPOT -> 0;
+                case CUSTOMER -> 1;
+                case STATION -> 2;
+            };
+        }
     }
 
     /**
      * Evaluate a single route with FULL RECHARGE policy at stations.
      * Returns route statistics including cost, distance, and violations.
+     * Optimized: uses primitive arrays for O(1) data access.
      *
      * @param route List of node IDs (excluding depot at start/end)
      * @return RouteStats with cost, distance, and violation metrics
      */
     public RouteStats evaluate(List<Integer> route) {
-        // Cache frequently accessed values for performance
-        List<Node> allNodes = instance.getAllNodes();
-        double[][] distMatrix = instance.getDistanceMatrix();
-        double[][] travelTimeMatrix = instance.getTravelTimeMatrix();
-        double[][] energyMatrix = instance.getEnergyMatrix();
-        
-        double qBattery = instance.getBatteryCapacity();
-        double cCapacity = instance.getCargoCapacity();
-        double gRefuelRate = instance.getRefuelRate();
-        double depotDue = instance.getDepot().getDueTime();
-
         // State variables
         double dist = 0.0;
         double load = 0.0;
@@ -51,43 +89,45 @@ public class RouteEvaluator {
 
         int prevNodeId = 0;  // Start from depot
 
-        // Simulate route
-        for (int nodeId : route) {
-            Node node = allNodes.get(nodeId);
+        // Simulate route using primitive array lookups
+        for (int i = 0, size = route.size(); i < size; i++) {
+            int nodeId = route.get(i);
 
-            // Travel to this node
+            // Travel to this node (direct array access)
             dist += distMatrix[prevNodeId][nodeId];
             currTime += travelTimeMatrix[prevNodeId][nodeId];
             currBat -= energyMatrix[prevNodeId][nodeId];
 
             // Check battery violation
             if (currBat < -1e-6) {
-                violBat += -currBat;
+                violBat -= currBat;
             }
 
             // Wait if arriving before ready time
-            if (currTime < node.getReadyTime()) {
-                currTime = node.getReadyTime();
+            double ready = readyTimes[nodeId];
+            if (currTime < ready) {
+                currTime = ready;
             }
 
             // Check time window violation
-            if (currTime > node.getDueTime()) {
-                violTw += currTime - node.getDueTime();
+            double due = dueTimes[nodeId];
+            if (currTime > due) {
+                violTw += currTime - due;
             }
 
-            NodeType nodeType = node.getType();
+            int nodeType = nodeTypes[nodeId];
             
-            if (nodeType == NodeType.CUSTOMER) {
+            if (nodeType == 1) { // CUSTOMER
                 // Customer: add demand and service time
-                load += node.getDemand();
-                currTime += node.getServiceTime();
+                load += demands[nodeId];
+                currTime += serviceTimes[nodeId];
                 
                 // Check capacity violation
                 if (load > cCapacity) {
                     violCap += load - cCapacity;
                 }
                 
-            } else if (nodeType == NodeType.STATION) {
+            } else if (nodeType == 2) { // STATION
                 // Station: full recharge
                 double amountToCharge = qBattery - currBat;
                 if (amountToCharge > 0) {
@@ -106,7 +146,7 @@ public class RouteEvaluator {
 
         // Check battery violation on return
         if (currBat < -1e-6) {
-            violBat += -currBat;
+            violBat -= currBat;
         }
 
         // Check depot time window violation
@@ -120,6 +160,259 @@ public class RouteEvaluator {
                      (Constants.PENALTY_TIME * violTw) +
                      (Constants.PENALTY_BATTERY * violBat);
 
+        return new RouteStats(cost, dist, violCap, violTw, violBat);
+    }
+    
+    /**
+     * Evaluate route with a customer inserted at a specific position.
+     * Avoids creating new ArrayList - simulates insertion in-place.
+     * 
+     * @param route Original route
+     * @param insertPos Position to insert (0 to route.size())
+     * @param customerId Customer to insert
+     * @return RouteStats for the modified route
+     */
+    public RouteStats evaluateWithInsertion(List<Integer> route, int insertPos, int customerId) {
+        double dist = 0.0;
+        double load = 0.0;
+        double currTime = 0.0;
+        double currBat = qBattery;
+        double violCap = 0.0;
+        double violTw = 0.0;
+        double violBat = 0.0;
+
+        int prevNodeId = 0;
+        int routeSize = route.size();
+        
+        // Process nodes before insertion point
+        for (int i = 0; i < insertPos; i++) {
+            int nodeId = route.get(i);
+            dist += distMatrix[prevNodeId][nodeId];
+            currTime += travelTimeMatrix[prevNodeId][nodeId];
+            currBat -= energyMatrix[prevNodeId][nodeId];
+            
+            if (currBat < -1e-6) violBat -= currBat;
+            
+            double ready = readyTimes[nodeId];
+            if (currTime < ready) currTime = ready;
+            
+            double due = dueTimes[nodeId];
+            if (currTime > due) violTw += currTime - due;
+            
+            int nodeType = nodeTypes[nodeId];
+            if (nodeType == 1) {
+                load += demands[nodeId];
+                currTime += serviceTimes[nodeId];
+                if (load > cCapacity) violCap += load - cCapacity;
+            } else if (nodeType == 2) {
+                double charge = qBattery - currBat;
+                if (charge > 0) currTime += charge * gRefuelRate;
+                currBat = qBattery;
+            }
+            prevNodeId = nodeId;
+        }
+        
+        // Process inserted customer
+        dist += distMatrix[prevNodeId][customerId];
+        currTime += travelTimeMatrix[prevNodeId][customerId];
+        currBat -= energyMatrix[prevNodeId][customerId];
+        
+        if (currBat < -1e-6) violBat -= currBat;
+        
+        double ready = readyTimes[customerId];
+        if (currTime < ready) currTime = ready;
+        
+        double due = dueTimes[customerId];
+        if (currTime > due) violTw += currTime - due;
+        
+        int nodeType = nodeTypes[customerId];
+        if (nodeType == 1) {
+            load += demands[customerId];
+            currTime += serviceTimes[customerId];
+            if (load > cCapacity) violCap += load - cCapacity;
+        } else if (nodeType == 2) {
+            double charge = qBattery - currBat;
+            if (charge > 0) currTime += charge * gRefuelRate;
+            currBat = qBattery;
+        }
+        prevNodeId = customerId;
+        
+        // Process nodes after insertion point
+        for (int i = insertPos; i < routeSize; i++) {
+            int nodeId = route.get(i);
+            dist += distMatrix[prevNodeId][nodeId];
+            currTime += travelTimeMatrix[prevNodeId][nodeId];
+            currBat -= energyMatrix[prevNodeId][nodeId];
+            
+            if (currBat < -1e-6) violBat -= currBat;
+            
+            ready = readyTimes[nodeId];
+            if (currTime < ready) currTime = ready;
+            
+            due = dueTimes[nodeId];
+            if (currTime > due) violTw += currTime - due;
+            
+            nodeType = nodeTypes[nodeId];
+            if (nodeType == 1) {
+                load += demands[nodeId];
+                currTime += serviceTimes[nodeId];
+                if (load > cCapacity) violCap += load - cCapacity;
+            } else if (nodeType == 2) {
+                double charge = qBattery - currBat;
+                if (charge > 0) currTime += charge * gRefuelRate;
+                currBat = qBattery;
+            }
+            prevNodeId = nodeId;
+        }
+        
+        // Return to depot
+        dist += distMatrix[prevNodeId][0];
+        currTime += travelTimeMatrix[prevNodeId][0];
+        currBat -= energyMatrix[prevNodeId][0];
+        
+        if (currBat < -1e-6) violBat -= currBat;
+        if (currTime > depotDue) violTw += currTime - depotDue;
+        
+        double cost = dist + (Constants.PENALTY_CAPACITY * violCap) +
+                     (Constants.PENALTY_TIME * violTw) + (Constants.PENALTY_BATTERY * violBat);
+        
+        return new RouteStats(cost, dist, violCap, violTw, violBat);
+    }
+    
+    /**
+     * Evaluate route with two nodes inserted at a specific position.
+     * Used for station+customer insertion. Avoids ArrayList creation.
+     */
+    public RouteStats evaluateWithDoubleInsertion(List<Integer> route, int insertPos, 
+                                                   int firstId, int secondId) {
+        double dist = 0.0;
+        double load = 0.0;
+        double currTime = 0.0;
+        double currBat = qBattery;
+        double violCap = 0.0;
+        double violTw = 0.0;
+        double violBat = 0.0;
+
+        int prevNodeId = 0;
+        int routeSize = route.size();
+        
+        // Process nodes before insertion point
+        for (int i = 0; i < insertPos; i++) {
+            int nodeId = route.get(i);
+            dist += distMatrix[prevNodeId][nodeId];
+            currTime += travelTimeMatrix[prevNodeId][nodeId];
+            currBat -= energyMatrix[prevNodeId][nodeId];
+            
+            if (currBat < -1e-6) violBat -= currBat;
+            
+            double ready = readyTimes[nodeId];
+            if (currTime < ready) currTime = ready;
+            
+            double due = dueTimes[nodeId];
+            if (currTime > due) violTw += currTime - due;
+            
+            int nodeType = nodeTypes[nodeId];
+            if (nodeType == 1) {
+                load += demands[nodeId];
+                currTime += serviceTimes[nodeId];
+                if (load > cCapacity) violCap += load - cCapacity;
+            } else if (nodeType == 2) {
+                double charge = qBattery - currBat;
+                if (charge > 0) currTime += charge * gRefuelRate;
+                currBat = qBattery;
+            }
+            prevNodeId = nodeId;
+        }
+        
+        // Process first inserted node
+        dist += distMatrix[prevNodeId][firstId];
+        currTime += travelTimeMatrix[prevNodeId][firstId];
+        currBat -= energyMatrix[prevNodeId][firstId];
+        
+        if (currBat < -1e-6) violBat -= currBat;
+        
+        double ready = readyTimes[firstId];
+        if (currTime < ready) currTime = ready;
+        
+        double due = dueTimes[firstId];
+        if (currTime > due) violTw += currTime - due;
+        
+        int nodeType = nodeTypes[firstId];
+        if (nodeType == 1) {
+            load += demands[firstId];
+            currTime += serviceTimes[firstId];
+            if (load > cCapacity) violCap += load - cCapacity;
+        } else if (nodeType == 2) {
+            double charge = qBattery - currBat;
+            if (charge > 0) currTime += charge * gRefuelRate;
+            currBat = qBattery;
+        }
+        prevNodeId = firstId;
+        
+        // Process second inserted node
+        dist += distMatrix[prevNodeId][secondId];
+        currTime += travelTimeMatrix[prevNodeId][secondId];
+        currBat -= energyMatrix[prevNodeId][secondId];
+        
+        if (currBat < -1e-6) violBat -= currBat;
+        
+        ready = readyTimes[secondId];
+        if (currTime < ready) currTime = ready;
+        
+        due = dueTimes[secondId];
+        if (currTime > due) violTw += currTime - due;
+        
+        nodeType = nodeTypes[secondId];
+        if (nodeType == 1) {
+            load += demands[secondId];
+            currTime += serviceTimes[secondId];
+            if (load > cCapacity) violCap += load - cCapacity;
+        } else if (nodeType == 2) {
+            double charge = qBattery - currBat;
+            if (charge > 0) currTime += charge * gRefuelRate;
+            currBat = qBattery;
+        }
+        prevNodeId = secondId;
+        
+        // Process nodes after insertion point
+        for (int i = insertPos; i < routeSize; i++) {
+            int nodeId = route.get(i);
+            dist += distMatrix[prevNodeId][nodeId];
+            currTime += travelTimeMatrix[prevNodeId][nodeId];
+            currBat -= energyMatrix[prevNodeId][nodeId];
+            
+            if (currBat < -1e-6) violBat -= currBat;
+            
+            ready = readyTimes[nodeId];
+            if (currTime < ready) currTime = ready;
+            
+            due = dueTimes[nodeId];
+            if (currTime > due) violTw += currTime - due;
+            
+            nodeType = nodeTypes[nodeId];
+            if (nodeType == 1) {
+                load += demands[nodeId];
+                currTime += serviceTimes[nodeId];
+                if (load > cCapacity) violCap += load - cCapacity;
+            } else if (nodeType == 2) {
+                double charge = qBattery - currBat;
+                if (charge > 0) currTime += charge * gRefuelRate;
+                currBat = qBattery;
+            }
+            prevNodeId = nodeId;
+        }
+        
+        // Return to depot
+        dist += distMatrix[prevNodeId][0];
+        currTime += travelTimeMatrix[prevNodeId][0];
+        currBat -= energyMatrix[prevNodeId][0];
+        
+        if (currBat < -1e-6) violBat -= currBat;
+        if (currTime > depotDue) violTw += currTime - depotDue;
+        
+        double cost = dist + (Constants.PENALTY_CAPACITY * violCap) +
+                     (Constants.PENALTY_TIME * violTw) + (Constants.PENALTY_BATTERY * violBat);
+        
         return new RouteStats(cost, dist, violCap, violTw, violBat);
     }
 

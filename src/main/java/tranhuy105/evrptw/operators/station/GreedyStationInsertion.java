@@ -2,7 +2,6 @@ package tranhuy105.evrptw.operators.station;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import tranhuy105.evrptw.algorithm.RouteEvaluator;
 import tranhuy105.evrptw.model.Instance;
@@ -95,14 +94,14 @@ public class GreedyStationInsertion {
     }
 
     /**
-     * Find best station to insert near violation point
+     * Find best station to insert near violation point.
+     * Optimized: uses in-place evaluation to avoid ArrayList creation.
      */
     private StationInsertionResult findBestStationInsertion(List<Integer> route, ViolationInfo violation) {
         // Get nearest stations to the node before violation
         int refNodeId = violation.position > 0 ? route.get(violation.position - 1) : 0;
-        Map<Integer, List<Integer>> nearestStations = instance.getNearestStations();
         
-        List<Integer> candidateStations = nearestStations.get(refNodeId);
+        List<Integer> candidateStations = instance.getNearestStations().get(refNodeId);
         if (candidateStations == null || candidateStations.isEmpty()) {
             // Fallback: use first 5 stations
             candidateStations = new ArrayList<>();
@@ -120,16 +119,18 @@ public class GreedyStationInsertion {
 
         for (int insertPos = startPos; insertPos < endPos; insertPos++) {
             for (int stationId : candidateStations) {
-                // Create test route with station inserted
-                List<Integer> testRoute = new ArrayList<>(route);
-                testRoute.add(insertPos, stationId);
-
-                RouteStats stats = evaluator.evaluate(testRoute);
+                // Use in-place evaluation (no ArrayList creation)
+                RouteStats stats = evaluator.evaluateWithInsertion(route, insertPos, stationId);
 
                 // Check if battery feasible and better cost
                 if (stats.batteryViolation() < 1e-6 && stats.cost() < bestCost) {
                     bestCost = stats.cost();
                     best = new StationInsertionResult(insertPos, stationId);
+                    
+                    // Early termination if we found a feasible solution
+                    if (stats.batteryViolation() < 1e-6) {
+                        return best;
+                    }
                 }
             }
         }

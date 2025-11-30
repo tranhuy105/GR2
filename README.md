@@ -12,6 +12,8 @@ mvn package -q -DskipTests
 
 ```bash
 java -jar target/EVRPTW_ALNS-1.0-SNAPSHOT-jar-with-dependencies.jar <instance_file> [options]
+
+java -jar target/EVRPTW_ALNS-1.0-SNAPSHOT-jar-with-dependencies.jar .\src\main\resources\data\r201_21.txt -i 5000 -t 60 --plot
 ```
 
 ### Options

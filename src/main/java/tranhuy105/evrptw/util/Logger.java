@@ -14,6 +14,10 @@ public class Logger {
         return level;
     }
 
+    public static boolean isDebugEnabled() {
+        return level.getValue() <= LogLevel.DEBUG.getValue();
+    }
+
     private static void log(LogLevel msgLevel, String message) {
         if (msgLevel.getValue() >= level.getValue()) {
             System.out.println("[" + msgLevel.name() + "] " + message);

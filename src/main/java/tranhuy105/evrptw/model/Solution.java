@@ -58,12 +58,15 @@ public class Solution {
     }
 
     /**
-     * Create a deep copy of this solution
+     * Create a deep copy of this solution.
+     * Optimized: pre-allocates ArrayList capacity.
      */
     public Solution copy() {
         Solution newSol = new Solution(instance);
-        newSol.routes = new ArrayList<>();
-        for (List<Integer> route : routes) {
+        int numRoutes = routes.size();
+        newSol.routes = new ArrayList<>(numRoutes);
+        for (int i = 0; i < numRoutes; i++) {
+            List<Integer> route = routes.get(i);
             newSol.routes.add(new ArrayList<>(route));
         }
         newSol.cost = cost;
