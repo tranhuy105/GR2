@@ -35,112 +35,108 @@ public class RegretInsertion implements InsertionOperator {
         }
 
         while (!remaining.isEmpty()) {
-            double bestRegret = Double.NEGATIVE_INFINITY;
-            int bestCust = -1;
-            int bestRouteIdx = -1;
-            int bestPos = -1;
-            Integer bestStBefore = null;
-            Integer bestStAfter = null;
-
             int numRoutes = solution.getRoutes().size();
 
-            for (int custId : remaining) {
-                // Collect insertion options using heap for top-k
-                PriorityQueue<InsertionOption> options = new PriorityQueue<>(
-                    Comparator.comparingDouble(InsertionOption::cost).reversed()
-                );
-
-                // Existing routes
-                for (int rIdx = 0; rIdx < numRoutes; rIdx++) {
-                    InsertionResult result = helper.findBestPosition(solution, rIdx, custId);
-                    
-                    InsertionOption option = new InsertionOption(
-                        result.costIncrease(),
-                        rIdx,
-                        result.position(),
-                        result.stationBefore(),
-                        result.stationAfter()
+            // Parallel evaluation of all remaining customers
+            RegretCandidate bestCandidate = remaining.parallelStream()
+                .map(custId -> {
+                    // Collect insertion options using heap for top-k
+                    PriorityQueue<InsertionOption> options = new PriorityQueue<>(
+                        Comparator.comparingDouble(InsertionOption::cost).reversed()
                     );
 
+                    // Existing routes
+                    for (int rIdx = 0; rIdx < numRoutes; rIdx++) {
+                        InsertionResult result = helper.findBestPosition(solution, rIdx, custId);
+                        
+                        InsertionOption option = new InsertionOption(
+                            result.costIncrease(),
+                            rIdx,
+                            result.position(),
+                            result.stationBefore(),
+                            result.stationAfter()
+                        );
+
+                        if (options.size() < k) {
+                            options.offer(option);
+                        } else if (option.cost < options.peek().cost) {
+                            // Replace worst (highest cost) with better option
+                            options.poll();
+                            options.offer(option);
+                        }
+                    }
+
+                    // New route option
+                    double costNewRoute = newRouteCosts.get(custId);
+                    InsertionOption newRouteOption = new InsertionOption(costNewRoute, -1, 0, null, null);
+                    
                     if (options.size() < k) {
-                        options.offer(option);
-                    } else if (option.cost < options.peek().cost) {
+                        options.offer(newRouteOption);
+                    } else if (newRouteOption.cost < options.peek().cost) {
                         // Replace worst (highest cost) with better option
                         options.poll();
-                        options.offer(option);
+                        options.offer(newRouteOption);
                     }
-                }
 
-                // New route option
-                double costNewRoute = newRouteCosts.get(custId);
-                InsertionOption newRouteOption = new InsertionOption(costNewRoute, -1, 0, null, null);
-                
-                if (options.size() < k) {
-                    options.offer(newRouteOption);
-                } else if (newRouteOption.cost < options.peek().cost) {
-                    // Replace worst (highest cost) with better option
-                    options.poll();
-                    options.offer(newRouteOption);
-                }
+                    if (options.isEmpty()) {
+                        return new RegretCandidate(custId, Double.NEGATIVE_INFINITY, null);
+                    }
 
-                if (options.isEmpty()) {
-                    continue;
-                }
+                    // Extract sorted options (smallest cost first)
+                    List<InsertionOption> sortedOptions = new ArrayList<>(options);
+                    sortedOptions.sort(Comparator.comparingDouble(InsertionOption::cost));
 
-                // Extract sorted options (smallest cost first)
-                List<InsertionOption> sortedOptions = new ArrayList<>(options);
-                sortedOptions.sort(Comparator.comparingDouble(InsertionOption::cost));
+                    // Calculate regret
+                    double regret;
+                    if (sortedOptions.size() >= k) {
+                        regret = sortedOptions.get(k - 1).cost - sortedOptions.get(0).cost;
+                    } else if (sortedOptions.size() >= 2) {
+                        regret = sortedOptions.get(sortedOptions.size() - 1).cost - sortedOptions.get(0).cost;
+                    } else {
+                        regret = Double.POSITIVE_INFINITY;
+                    }
+                    
+                    return new RegretCandidate(custId, regret, sortedOptions.get(0));
+                })
+                .max(Comparator.comparingDouble(RegretCandidate::regretValue))
+                .orElse(null);
 
-                // Calculate regret
-                double regret;
-                if (sortedOptions.size() >= k) {
-                    regret = sortedOptions.get(k - 1).cost - sortedOptions.get(0).cost;
-                } else if (sortedOptions.size() >= 2) {
-                    regret = sortedOptions.get(sortedOptions.size() - 1).cost - sortedOptions.get(0).cost;
-                } else {
-                    regret = Double.POSITIVE_INFINITY;
-                }
-
-                if (regret > bestRegret) {
-                    bestRegret = regret;
-                    bestCust = custId;
-                    InsertionOption best = sortedOptions.get(0);
-                    bestRouteIdx = best.routeIdx;
-                    bestPos = best.position;
-                    bestStBefore = best.stationBefore;
-                    bestStAfter = best.stationAfter;
-                }
-            }
-
-            if (bestCust == -1) {
+            if (bestCandidate == null || bestCandidate.bestOption == null) {
                 break;
             }
 
             // Execute insertion
-            if (bestRouteIdx == -1) {
+            InsertionOption best = bestCandidate.bestOption;
+            if (best.routeIdx == -1) {
                 // Create new route
                 List<Integer> newRoute = new ArrayList<>();
-                newRoute.add(bestCust);
+                newRoute.add(bestCandidate.customerId);
                 solution.getRoutes().add(newRoute);
             } else {
                 // Insert into existing route
-                List<Integer> route = solution.getRoutes().get(bestRouteIdx);
+                List<Integer> route = solution.getRoutes().get(best.routeIdx);
                 List<Integer> toInsert = new ArrayList<>();
                 
-                if (bestStBefore != null) {
-                    toInsert.add(bestStBefore);
+                if (best.stationBefore != null) {
+                    toInsert.add(best.stationBefore);
                 }
-                toInsert.add(bestCust);
-                if (bestStAfter != null) {
-                    toInsert.add(bestStAfter);
+                toInsert.add(bestCandidate.customerId);
+                if (best.stationAfter != null) {
+                    toInsert.add(best.stationAfter);
                 }
 
-                route.addAll(bestPos, toInsert);
+                route.addAll(best.position, toInsert);
             }
 
-            remaining.remove(Integer.valueOf(bestCust));
+            remaining.remove(Integer.valueOf(bestCandidate.customerId));
         }
     }
+
+    private record RegretCandidate(
+        int customerId,
+        double regretValue,
+        InsertionOption bestOption
+    ) {}
 
     /**
      * Helper record for insertion options

@@ -1,6 +1,7 @@
 package tranhuy105.evrptw.operators.insertion;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,74 +32,86 @@ public class GreedyInsertion implements InsertionOperator {
         }
 
         while (!remaining.isEmpty()) {
-            double bestCost = Double.POSITIVE_INFINITY;
-            int bestCust = -1;
-            int bestRouteIdx = -1;
-            int bestPos = -1;
-            Integer bestStBefore = null;
-            Integer bestStAfter = null;
-
             int numRoutes = solution.getRoutes().size();
 
-            for (int custId : remaining) {
-                // Try existing routes
-                for (int rIdx = 0; rIdx < numRoutes; rIdx++) {
-                    InsertionResult result = helper.findBestPosition(solution, rIdx, custId);
-                    
-                    if (result.costIncrease() < bestCost) {
-                        bestCost = result.costIncrease();
-                        bestCust = custId;
-                        bestRouteIdx = rIdx;
-                        bestPos = result.position();
-                        bestStBefore = result.stationBefore();
-                        bestStAfter = result.stationAfter();
+            // Parallel evaluation of all remaining customers
+            InsertionCandidate bestCandidate = remaining.parallelStream()
+                .map(custId -> {
+                    double bestCost = Double.POSITIVE_INFINITY;
+                    int bestRouteIdx = -1;
+                    int bestPos = -1;
+                    Integer bestStBefore = null;
+                    Integer bestStAfter = null;
 
-                        // Early termination if cost is very good
-                        if (bestCost < 0) {
-                            break;
+                    // Try existing routes
+                    for (int rIdx = 0; rIdx < numRoutes; rIdx++) {
+                        InsertionResult result = helper.findBestPosition(solution, rIdx, custId);
+                        
+                        if (result.costIncrease() < bestCost) {
+                            bestCost = result.costIncrease();
+                            bestRouteIdx = rIdx;
+                            bestPos = result.position();
+                            bestStBefore = result.stationBefore();
+                            bestStAfter = result.stationAfter();
+
+                            // Early termination if cost is very good
+                            if (bestCost < 0) {
+                                break;
+                            }
                         }
                     }
-                }
 
-                // Try new route
-                double costNewRoute = newRouteCosts.get(custId);
-                if (costNewRoute < bestCost) {
-                    bestCost = costNewRoute;
-                    bestCust = custId;
-                    bestRouteIdx = -1;
-                    bestPos = 0;
-                    bestStBefore = null;
-                    bestStAfter = null;
-                }
-            }
+                    // Try new route
+                    double costNewRoute = newRouteCosts.get(custId);
+                    if (costNewRoute < bestCost) {
+                        bestCost = costNewRoute;
+                        bestRouteIdx = -1;
+                        bestPos = 0;
+                        bestStBefore = null;
+                        bestStAfter = null;
+                    }
+                    
+                    return new InsertionCandidate(custId, bestCost, bestRouteIdx, bestPos, bestStBefore, bestStAfter);
+                })
+                .min(Comparator.comparingDouble(InsertionCandidate::costIncrease))
+                .orElse(null);
 
-            if (bestCust == -1) {
+            if (bestCandidate == null || bestCandidate.costIncrease == Double.POSITIVE_INFINITY) {
                 break;
             }
 
             // Execute insertion
-            if (bestRouteIdx == -1) {
+            if (bestCandidate.routeIdx == -1) {
                 // Create new route
                 List<Integer> newRoute = new ArrayList<>();
-                newRoute.add(bestCust);
+                newRoute.add(bestCandidate.customerId);
                 solution.getRoutes().add(newRoute);
             } else {
                 // Insert into existing route
-                List<Integer> route = solution.getRoutes().get(bestRouteIdx);
+                List<Integer> route = solution.getRoutes().get(bestCandidate.routeIdx);
                 List<Integer> toInsert = new ArrayList<>();
                 
-                if (bestStBefore != null) {
-                    toInsert.add(bestStBefore);
+                if (bestCandidate.stationBefore != null) {
+                    toInsert.add(bestCandidate.stationBefore);
                 }
-                toInsert.add(bestCust);
-                if (bestStAfter != null) {
-                    toInsert.add(bestStAfter);
+                toInsert.add(bestCandidate.customerId);
+                if (bestCandidate.stationAfter != null) {
+                    toInsert.add(bestCandidate.stationAfter);
                 }
 
-                route.addAll(bestPos, toInsert);
+                route.addAll(bestCandidate.position, toInsert);
             }
 
-            remaining.remove(Integer.valueOf(bestCust));
+            remaining.remove(Integer.valueOf(bestCandidate.customerId));
         }
     }
+
+    private record InsertionCandidate(
+        int customerId,
+        double costIncrease,
+        int routeIdx,
+        int position,
+        Integer stationBefore,
+        Integer stationAfter
+    ) {}
 }

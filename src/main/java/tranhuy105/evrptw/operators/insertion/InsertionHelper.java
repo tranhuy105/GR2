@@ -41,6 +41,9 @@ public class InsertionHelper {
         // Cache route cost (computed once)
         RouteStats oldStats = evaluator.evaluate(route);
         double costOld = oldStats.cost();
+        
+        // Cache forward states for optimized insertion
+        double[][] forwardStates = evaluator.getForwardStates(route);
 
         int bestPos = -1;
         double bestCost = Double.POSITIVE_INFINITY;
@@ -54,7 +57,7 @@ public class InsertionHelper {
         // Evaluate ALL positions for best quality
         for (int pos = 0; pos <= routeLen; pos++) {
             // Scenario 1: Direct insertion (no ArrayList creation)
-            RouteStats newStats = evaluator.evaluateWithInsertion(route, pos, customerId);
+            RouteStats newStats = evaluator.evaluateWithInsertion(route, pos, customerId, forwardStates);
             double delta = newStats.cost() - costOld;
 
             if (delta < bestCost) {
@@ -70,7 +73,7 @@ public class InsertionHelper {
                     int stId = nearestStationIds.get(s);
                     
                     // Station BEFORE customer (no ArrayList creation)
-                    RouteStats statsBefore = evaluator.evaluateWithDoubleInsertion(route, pos, stId, customerId);
+                    RouteStats statsBefore = evaluator.evaluateWithDoubleInsertion(route, pos, stId, customerId, forwardStates);
                     
                     if (statsBefore.batteryViolation() < 1e-6 && statsBefore.cost() - costOld < bestCost) {
                         bestCost = statsBefore.cost() - costOld;
@@ -80,7 +83,7 @@ public class InsertionHelper {
                     }
 
                     // Station AFTER customer (no ArrayList creation)
-                    RouteStats statsAfter = evaluator.evaluateWithDoubleInsertion(route, pos, customerId, stId);
+                    RouteStats statsAfter = evaluator.evaluateWithDoubleInsertion(route, pos, customerId, stId, forwardStates);
                     
                     if (statsAfter.batteryViolation() < 1e-6 && statsAfter.cost() - costOld < bestCost) {
                         bestCost = statsAfter.cost() - costOld;
