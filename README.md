@@ -1,6 +1,6 @@
-# EVRPTW ALNS Solver
+# GR2
 
-Electric Vehicle Routing Problem with Time Windows solver using Adaptive Large Neighborhood Search.
+Tran Quang Huy - Ha Noi University Of Science and Technology
 
 ## Build
 

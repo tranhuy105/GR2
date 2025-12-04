@@ -680,6 +680,47 @@ public class RouteEvaluator {
         return new RouteStats(cost, dist, violCap, violTw, violBat);
     }
 
+    /**
+     * Calculate route cost from pre-computed forward states.
+     * This avoids redundant route traversal when forward states are already computed.
+     * 
+     * @param forwardStates Pre-computed forward states from getForwardStates()
+     * @param route The route (used to get the last node for return-to-depot calculation)
+     * @return Total route cost
+     */
+    public double getCostFromForwardStates(double[][] forwardStates, List<Integer> route) {
+        int size = route.size();
+        
+        if (size == 0) {
+            // Empty route
+            return 0.0;
+        }
+        
+        // Get the final state after visiting all nodes
+        double[] finalState = forwardStates[size];
+        double dist = finalState[0];
+        double currTime = finalState[1];
+        double currBat = finalState[2];
+        double violCap = finalState[4];
+        double violTw = finalState[5];
+        double violBat = finalState[6];
+        
+        // Add return to depot
+        int lastNodeId = route.get(size - 1);
+        dist += distMatrix[lastNodeId][0];
+        currTime += travelTimeMatrix[lastNodeId][0];
+        currBat -= energyMatrix[lastNodeId][0];
+        
+        if (currBat < -1e-6) violBat -= currBat;
+        if (currTime > depotDue) violTw += currTime - depotDue;
+        
+        // Calculate total cost
+        double cost = dist + (Constants.PENALTY_CAPACITY * violCap) +
+                     (Constants.PENALTY_TIME * violTw) + (Constants.PENALTY_BATTERY * violBat);
+        
+        return cost;
+    }
+
     public void calculateTotalCost(Solution solution) {
         double totalCost = solution.getRoutes().size() * Constants.PENALTY_VEHICLE;
         double totalDist = 0.0;

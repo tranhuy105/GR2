@@ -35,6 +35,9 @@ public class GreedyStationInsertion {
             // Keep repairing until feasible or no improvement
             int maxRepairs = 10;
             for (int attempt = 0; attempt < maxRepairs; attempt++) {
+                // Precompute forward states once per repair attempt (optimization)
+                double[][] forwardStates = evaluator.getForwardStates(route);
+                
                 // Find first battery violation
                 ViolationInfo violation = findFirstBatteryViolation(route);
                 
@@ -42,8 +45,8 @@ public class GreedyStationInsertion {
                     break;  // Route is battery feasible
                 }
 
-                // Find best station to insert
-                StationInsertionResult best = findBestStationInsertion(route, violation);
+                // Find best station to insert, passing forward states to avoid redundant computation
+                StationInsertionResult best = findBestStationInsertion(route, violation, forwardStates);
                 
                 if (best != null) {
                     route.add(best.position, best.stationId);
@@ -95,9 +98,15 @@ public class GreedyStationInsertion {
 
     /**
      * Find best station to insert near violation point.
-     * Optimized: uses in-place evaluation to avoid ArrayList creation.
+     * Optimized: uses pre-computed forward states to avoid redundant evaluations.
+     * 
+     * @param route The route to fix
+     * @param violation Information about the battery violation
+     * @param forwardStates Pre-computed forward states for the route
+     * @return Best station insertion result, or null if no feasible insertion found
      */
-    private StationInsertionResult findBestStationInsertion(List<Integer> route, ViolationInfo violation) {
+    private StationInsertionResult findBestStationInsertion(List<Integer> route, ViolationInfo violation, 
+                                                           double[][] forwardStates) {
         // Get nearest stations to the node before violation
         int refNodeId = violation.position > 0 ? route.get(violation.position - 1) : 0;
         
@@ -119,8 +128,8 @@ public class GreedyStationInsertion {
 
         for (int insertPos = startPos; insertPos < endPos; insertPos++) {
             for (int stationId : candidateStations) {
-                // Use in-place evaluation (no ArrayList creation)
-                RouteStats stats = evaluator.evaluateWithInsertion(route, insertPos, stationId);
+                // Use forward states for optimized evaluation
+                RouteStats stats = evaluator.evaluateWithInsertion(route, insertPos, stationId, forwardStates);
 
                 // Check if battery feasible and better cost
                 if (stats.batteryViolation() < 1e-6 && stats.cost() < bestCost) {
@@ -128,9 +137,7 @@ public class GreedyStationInsertion {
                     best = new StationInsertionResult(insertPos, stationId);
                     
                     // Early termination if we found a feasible solution
-                    if (stats.batteryViolation() < 1e-6) {
-                        return best;
-                    }
+                    return best;
                 }
             }
         }

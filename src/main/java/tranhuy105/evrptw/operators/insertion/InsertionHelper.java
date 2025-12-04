@@ -38,12 +38,11 @@ public class InsertionHelper {
         List<Integer> route = solution.getRoutes().get(routeIdx);
         int routeLen = route.size();
 
-        // Cache route cost (computed once)
-        RouteStats oldStats = evaluator.evaluate(route);
-        double costOld = oldStats.cost();
-        
-        // Cache forward states for optimized insertion
+        // Cache forward states for optimized insertion (computed once)
         double[][] forwardStates = evaluator.getForwardStates(route);
+        
+        // Calculate old cost from forward states (no redundant evaluation)
+        double costOld = evaluator.getCostFromForwardStates(forwardStates, route);
 
         int bestPos = -1;
         double bestCost = Double.POSITIVE_INFINITY;
@@ -65,6 +64,11 @@ public class InsertionHelper {
                 bestPos = pos;
                 bestStationBefore = null;
                 bestStationAfter = null;
+                
+                // Early termination if very good insertion (no battery violation)
+                if (delta < 1e-6 && newStats.batteryViolation() < 1e-6) {
+                    return new InsertionResult(bestPos, bestCost, null, null);
+                }
             }
 
             // Scenario 2: Insert with station if battery violation
