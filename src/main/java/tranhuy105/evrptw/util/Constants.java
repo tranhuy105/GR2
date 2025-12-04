@@ -10,6 +10,9 @@ public class Constants {
     public static final double PENALTY_TIME = 10000.0;
     public static final double PENALTY_BATTERY = 10000.0;
 
+    // Battery swap parameters
+    public static final double BATTERY_SWAP_TIME = 5.0;  // Fixed swap time in minutes
+
     // Adaptive weight parameters
     public static final int SIGMA_NEW_BEST = 33;
     public static final int SIGMA_BETTER = 9;

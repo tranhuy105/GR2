@@ -21,6 +21,8 @@ public class Instance {
     private double consumptionRate = 1.0;
     private double refuelRate = 1.0;
     private double velocity = 1.0;
+    private ChargingMode chargingMode = ChargingMode.FULL_RECHARGE;
+    private double batterySwapTime = 5.0;  // Default swap time in minutes
 
     // Precomputed matrices
     private double[][] distanceMatrix;
@@ -89,6 +91,22 @@ public class Instance {
 
     public void setVelocity(double velocity) {
         this.velocity = velocity;
+    }
+
+    public ChargingMode getChargingMode() {
+        return chargingMode;
+    }
+
+    public void setChargingMode(ChargingMode chargingMode) {
+        this.chargingMode = chargingMode;
+    }
+
+    public double getBatterySwapTime() {
+        return batterySwapTime;
+    }
+
+    public void setBatterySwapTime(double batterySwapTime) {
+        this.batterySwapTime = batterySwapTime;
     }
 
     public double[][] getDistanceMatrix() {

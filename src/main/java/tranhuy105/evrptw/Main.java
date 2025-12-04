@@ -15,6 +15,7 @@ import tranhuy105.evrptw.io.InstanceReader;
 import tranhuy105.evrptw.io.SolutionPlotter;
 import tranhuy105.evrptw.io.SolutionVerifier;
 import tranhuy105.evrptw.io.SolutionWriter;
+import tranhuy105.evrptw.model.ChargingMode;
 import tranhuy105.evrptw.model.Instance;
 import tranhuy105.evrptw.model.Solution;
 import tranhuy105.evrptw.util.LogLevel;
@@ -53,6 +54,8 @@ public class Main {
             String verifierPath = cmd.getOptionValue("verifier");
             boolean plot = cmd.hasOption("plot");
             String logLevelStr = cmd.getOptionValue("log-level", "INFO");
+            String chargingModeStr = cmd.getOptionValue("charging-mode", "FULL_RECHARGE");
+            double swapTime = Double.parseDouble(cmd.getOptionValue("swap-time", "2.0"));
 
             // Set log level
             try {
@@ -61,8 +64,18 @@ public class Main {
                 Logger.warning("Invalid log level: " + logLevelStr + ", using INFO");
             }
 
+            // Parse charging mode
+            ChargingMode chargingMode;
+            try {
+                chargingMode = ChargingMode.valueOf(chargingModeStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                Logger.warning("Invalid charging mode: " + chargingModeStr + ", using FULL_RECHARGE");
+                chargingMode = ChargingMode.FULL_RECHARGE;
+            }
+
             // Run solver
-            runSolver(instancePath, iterations, timeLimit, outputDir, verify, verifierPath, plot);
+            runSolver(instancePath, iterations, timeLimit, outputDir, verify, verifierPath, plot,
+                     chargingMode, swapTime);
 
         } catch (ParseException e) {
             System.err.println("Error parsing arguments: " + e.getMessage());
@@ -123,16 +136,33 @@ public class Main {
                 .desc("Show help message")
                 .build());
 
+        options.addOption(Option.builder("cm")
+                .longOpt("charging-mode")
+                .hasArg()
+                .desc("Charging mode: FULL_RECHARGE or BATTERY_SWAP (default: FULL_RECHARGE)")
+                .build());
+
+        options.addOption(Option.builder("st")
+                .longOpt("swap-time")
+                .hasArg()
+                .desc("Battery swap time in minutes (default: 2.0, only used with BATTERY_SWAP mode)")
+                .build());
+
         return options;
     }
 
     private static void runSolver(String instancePath, int iterations, double timeLimit,
                                    String outputDir, boolean verify, 
-                                   String verifierPath, boolean plot) throws Exception {
+                                   String verifierPath, boolean plot,
+                                   ChargingMode chargingMode, double swapTime) throws Exception {
         Logger.info("Reading instance: " + instancePath);
         
         InstanceReader reader = new InstanceReader();
         Instance instance = reader.read(instancePath);
+
+        // Set charging mode
+        instance.setChargingMode(chargingMode);
+        instance.setBatterySwapTime(swapTime);
 
         Logger.info(String.format("Loaded: %d customers, %d stations",
                 instance.getCustomers().size(), instance.getStations().size()));
@@ -140,6 +170,9 @@ public class Main {
                 instance.getBatteryCapacity(), instance.getCargoCapacity(),
                 instance.getConsumptionRate(), instance.getRefuelRate(),
                 instance.getVelocity()));
+        Logger.info(String.format("Charging mode: %s%s", chargingMode,
+                chargingMode == ChargingMode.BATTERY_SWAP ? 
+                String.format(" (swap time: %.1f min)", swapTime) : ""));
 
         // Build stopping criteria message
         String stopCriteria;
