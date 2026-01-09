@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: evrptw-server
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+server:
+  port: 8080
+
+# ALNS Algorithm Configuration
+alns:
+  default-iterations: 5000
+  default-time-limit: 0
+  cooling-rate: 0.9995
+  segment-size: 100
+  station-removal-interval: 500
+  penalties:
+    vehicle: 100000
+    capacity: 10000
+    time: 10000
+    battery: 10000
+  shaw:
+    phi:
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+    eta: 2.0
+
+# Logging
+logging:
+  level:
+    com.tranhuy105.server: INFO
+    com.tranhuy105.server.algorithm: INFO
