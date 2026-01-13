@@ -20,6 +20,10 @@ public class Instance {
     
     private VehicleSpec vehicleSpec = VehicleSpec.builder().build();
     
+    // If true, uses Haversine formula for real lat/lng coordinates (returns km)
+    // If false, uses Euclidean distance for test data coordinates
+    private boolean useGeoCoordinates = false;
+    
     // Precomputed matrices
     private double[][] distanceMatrix;
     private double[][] travelTimeMatrix;
@@ -62,7 +66,7 @@ public class Instance {
 
         int size = allNodes.size();
 
-        // Precompute distance matrix (Euclidean)
+        // Precompute distance matrix (Haversine for geo coordinates, Euclidean for test data)
         distanceMatrix = new double[size][size];
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
@@ -102,12 +106,39 @@ public class Instance {
     }
 
     /**
-     * Calculate Euclidean distance between two nodes
+     * Calculate distance between two nodes.
+     * Uses Haversine formula for real geo coordinates (returns km),
+     * or Euclidean distance for test data.
      */
     private double calculateDistance(Node n1, Node n2) {
-        double dx = n1.getX() - n2.getX();
-        double dy = n1.getY() - n2.getY();
-        return Math.sqrt(dx * dx + dy * dy);
+        if (useGeoCoordinates) {
+            return haversineDistance(n1.getY(), n1.getX(), n2.getY(), n2.getX());
+        } else {
+            double dx = n1.getX() - n2.getX();
+            double dy = n1.getY() - n2.getY();
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+    }
+    
+    /**
+     * Calculate distance between two lat/lng points using Haversine formula.
+     * @return distance in kilometers
+     */
+    private double haversineDistance(double lat1, double lng1, double lat2, double lng2) {
+        final double EARTH_RADIUS_KM = 6371.0;
+        
+        double lat1Rad = Math.toRadians(lat1);
+        double lat2Rad = Math.toRadians(lat2);
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                   Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+                   Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        
+        return EARTH_RADIUS_KM * c;
     }
 
     public double distance(int i, int j) {

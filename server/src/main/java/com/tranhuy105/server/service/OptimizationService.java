@@ -142,6 +142,9 @@ public class OptimizationService {
                                              List<SwapStation> stations) {
         Instance instance = new Instance();
         
+        // Use Haversine formula for real lat/lng coordinates
+        instance.setUseGeoCoordinates(true);
+        
         // Create depot node
         Node depot = Node.builder()
                 .stringId("D0")
