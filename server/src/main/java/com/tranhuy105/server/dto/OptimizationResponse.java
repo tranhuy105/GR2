@@ -12,6 +12,7 @@ public class OptimizationResponse {
     private List<RouteDTO> routes;
     private SummaryDTO summary;
     private long computeTimeMs;
+    private String chargingMode;
 
     @Data
     public static class RouteDTO {
