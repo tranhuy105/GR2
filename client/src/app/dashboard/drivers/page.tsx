@@ -4,19 +4,19 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger
 } from '@/components/ui/select';
 import { api } from '@/lib/api';
 import { statusColors, statusLabels } from '@/lib/utils';
@@ -162,12 +162,6 @@ export default function DriversPage() {
                   <span>{driver.licensePlate}</span>
                 </div>
               )}
-              {driver.batteryCapacity && (
-                <div className="flex items-center gap-2 text-sm text-zinc-400">
-                  <span>🔋</span>
-                  <span>Dung lượng: {driver.batteryCapacity} kWh</span>
-                </div>
-              )}
               <div className="flex gap-2 pt-2">
                 <Button
                   variant="ghost"
@@ -216,8 +210,6 @@ function DriverForm({
     name: initialData?.name || '',
     phone: initialData?.phone || '',
     licensePlate: initialData?.licensePlate || '',
-    batteryCapacity: initialData?.batteryCapacity,
-    loadCapacity: initialData?.loadCapacity,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -255,29 +247,6 @@ function DriverForm({
           placeholder="VD: 59A1-001"
           className="bg-zinc-800 border-zinc-700"
         />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Dung lượng pin (kWh)</Label>
-          <Input
-            type="number"
-            value={formData.batteryCapacity || ''}
-            onChange={(e) => setFormData({ ...formData, batteryCapacity: e.target.value ? parseFloat(e.target.value) : undefined })}
-            placeholder="77.75"
-            className="bg-zinc-800 border-zinc-700"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Tải trọng (kg)</Label>
-          <Input
-            type="number"
-            value={formData.loadCapacity || ''}
-            onChange={(e) => setFormData({ ...formData, loadCapacity: e.target.value ? parseFloat(e.target.value) : undefined })}
-            placeholder="200"
-            className="bg-zinc-800 border-zinc-700"
-          />
-        </div>
       </div>
 
       <div className="flex justify-end gap-2 pt-4">

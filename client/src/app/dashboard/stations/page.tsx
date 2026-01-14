@@ -1,23 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { FleetMap } from '@/components/map/FleetMap';
+import { LocationPicker } from '@/components/map/LocationPicker';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { FleetMap } from '@/components/map/FleetMap';
 import { api } from '@/lib/api';
 import { formatTime } from '@/lib/utils';
-import { toast } from 'sonner';
 import type { SwapStation, SwapStationCreateRequest } from '@/types';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export default function StationsPage() {
   const [stations, setStations] = useState<SwapStation[]>([]);
@@ -104,7 +105,7 @@ export default function StationsPage() {
               + Thêm trạm
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg bg-zinc-900 border-zinc-800">
+          <DialogContent className="sm:!max-w-4xl !w-[95vw] bg-zinc-900 border-zinc-800">
             <DialogHeader>
               <DialogTitle>
                 {editingStation ? 'Sửa thông tin trạm' : 'Thêm trạm mới'}
@@ -241,114 +242,109 @@ function StationForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Tên trạm</Label>
-        <Input
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-          className="bg-zinc-800 border-zinc-700"
-        />
-      </div>
+    <form onSubmit={handleSubmit}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left column - Map */}
+        <div className="space-y-2">
+          <Label className="text-base font-medium">Vị trí trạm</Label>
+          <LocationPicker
+            value={{ lat: formData.lat, lng: formData.lng }}
+            onChange={(location) => setFormData({
+              ...formData,
+              lat: location.lat,
+              lng: location.lng,
+            })}
+            className="h-[380px]"
+          />
+        </div>
 
-      <div className="space-y-2">
-        <Label>Địa chỉ</Label>
-        <Input
-          value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          required
-          className="bg-zinc-800 border-zinc-700"
-        />
-      </div>
+        {/* Right column - Form fields */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tên trạm</Label>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              className="bg-zinc-800 border-zinc-700"
+            />
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Vĩ độ</Label>
-          <Input
-            type="number"
-            step="0.0001"
-            value={formData.lat}
-            onChange={(e) => setFormData({ ...formData, lat: parseFloat(e.target.value) })}
-            required
-            className="bg-zinc-800 border-zinc-700"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Kinh độ</Label>
-          <Input
-            type="number"
-            step="0.0001"
-            value={formData.lng}
-            onChange={(e) => setFormData({ ...formData, lng: parseFloat(e.target.value) })}
-            required
-            className="bg-zinc-800 border-zinc-700"
-          />
-        </div>
-      </div>
+          <div className="space-y-2">
+            <Label>Địa chỉ</Label>
+            <Input
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              required
+              className="bg-zinc-800 border-zinc-700"
+            />
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Tổng số slot</Label>
-          <Input
-            type="number"
-            min="1"
-            value={formData.totalSlots}
-            onChange={(e) => setFormData({ ...formData, totalSlots: parseInt(e.target.value) })}
-            required
-            className="bg-zinc-800 border-zinc-700"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Pin có sẵn</Label>
-          <Input
-            type="number"
-            min="0"
-            value={formData.availableBatteries}
-            onChange={(e) => setFormData({ ...formData, availableBatteries: parseInt(e.target.value) })}
-            required
-            className="bg-zinc-800 border-zinc-700"
-          />
-        </div>
-      </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Tổng số slot</Label>
+              <Input
+                type="number"
+                min="1"
+                value={formData.totalSlots}
+                onChange={(e) => setFormData({ ...formData, totalSlots: parseInt(e.target.value) })}
+                required
+                className="bg-zinc-800 border-zinc-700"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Pin có sẵn</Label>
+              <Input
+                type="number"
+                min="0"
+                value={formData.availableBatteries}
+                onChange={(e) => setFormData({ ...formData, availableBatteries: parseInt(e.target.value) })}
+                required
+                className="bg-zinc-800 border-zinc-700"
+              />
+            </div>
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Giờ mở cửa</Label>
-          <Input
-            type="number"
-            min="0"
-            max="24"
-            step="0.5"
-            value={formData.openTime}
-            onChange={(e) => setFormData({ ...formData, openTime: parseFloat(e.target.value) })}
-            required
-            className="bg-zinc-800 border-zinc-700"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Giờ đóng cửa</Label>
-          <Input
-            type="number"
-            min="0"
-            max="24"
-            step="0.5"
-            value={formData.closeTime}
-            onChange={(e) => setFormData({ ...formData, closeTime: parseFloat(e.target.value) })}
-            required
-            className="bg-zinc-800 border-zinc-700"
-          />
-        </div>
-      </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Giờ mở cửa</Label>
+              <Input
+                type="number"
+                min="0"
+                max="24"
+                step="0.5"
+                value={formData.openTime}
+                onChange={(e) => setFormData({ ...formData, openTime: parseFloat(e.target.value) })}
+                required
+                className="bg-zinc-800 border-zinc-700"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Giờ đóng cửa</Label>
+              <Input
+                type="number"
+                min="0"
+                max="24"
+                step="0.5"
+                value={formData.closeTime}
+                onChange={(e) => setFormData({ ...formData, closeTime: parseFloat(e.target.value) })}
+                required
+                className="bg-zinc-800 border-zinc-700"
+              />
+            </div>
+          </div>
 
-      <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          Hủy
-        </Button>
-        <Button type="submit">
-          {initialData ? 'Cập nhật' : 'Tạo mới'}
-        </Button>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="ghost" onClick={onCancel}>
+              Hủy
+            </Button>
+            <Button type="submit">
+              {initialData ? 'Cập nhật' : 'Tạo mới'}
+            </Button>
+          </div>
+        </div>
       </div>
     </form>
   );
 }
+

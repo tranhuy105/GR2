@@ -79,6 +79,7 @@ export function FleetMap({
     className = "",
 }: FleetMapProps) {
     const [isClient, setIsClient] = useState(false);
+    const [leafletLib, setLeafletLib] = useState<typeof import('leaflet') | null>(null);
     const [icons, setIcons] = useState<{
         station: L.Icon;
         customer: L.Icon;
@@ -92,6 +93,7 @@ export function FleetMap({
 
         // Import Leaflet and create icons
         import("leaflet").then((L) => {
+            setLeafletLib(L);
             // Fix default marker icon issue
             delete (
                 L.Icon.Default.prototype as {
@@ -167,6 +169,22 @@ export function FleetMap({
             });
         });
     }, []);
+
+    // Helper function to calculate arrow positions and angles along a route
+    const getArrowsForRoute = (points: [number, number][], color: string) => {
+        const arrows: Array<{ position: [number, number]; angle: number; color: string }> = [];
+        for (let i = 0; i < points.length - 1; i++) {
+            const [lat1, lng1] = points[i];
+            const [lat2, lng2] = points[i + 1];
+            // Midpoint of segment
+            const midLat = (lat1 + lat2) / 2;
+            const midLng = (lng1 + lng2) / 2;
+            // Calculate angle (in degrees)
+            const angle = Math.atan2(lng2 - lng1, lat2 - lat1) * (180 / Math.PI);
+            arrows.push({ position: [midLat, midLng], angle, color });
+        }
+        return arrows;
+    };
 
     if (!isClient || !icons) {
         return (
@@ -314,6 +332,22 @@ export function FleetMap({
                         opacity={0.7}
                     />
                 ))}
+
+                {/* Route direction arrows */}
+                {leafletLib && routes.map((route, routeIndex) => 
+                    getArrowsForRoute(route.points, route.color).map((arrow, arrowIndex) => (
+                        <Marker
+                            key={`arrow-${routeIndex}-${arrowIndex}`}
+                            position={arrow.position}
+                            icon={leafletLib.divIcon({
+                                html: `<div style="transform: rotate(${arrow.angle - 90}deg); color: ${arrow.color}; font-size: 16px; font-weight: bold; text-shadow: 1px 1px 2px white, -1px -1px 2px white;">▶</div>`,
+                                iconSize: [16, 16],
+                                iconAnchor: [8, 8],
+                                className: '',
+                            })}
+                        />
+                    ))
+                )}
 
                 {/* Single driver position (for driver's own view) */}
                 {driverPosition && (

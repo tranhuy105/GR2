@@ -187,8 +187,6 @@ export interface DriverCreateRequest {
     name: string;
     phone: string;
     licensePlate?: string;
-    batteryCapacity?: number;
-    loadCapacity?: number;
 }
 
 export interface SwapStationCreateRequest {

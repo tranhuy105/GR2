@@ -44,7 +44,7 @@ export function DriverRouteMap({
     const [icons, setIcons] = useState<{
         depot: L.Icon;
         completed: L.Icon;
-        current: L.Icon;
+        current: any;
         upcoming: L.Icon;
         driver: any;
     } | null>(null);
@@ -91,20 +91,17 @@ export function DriverRouteMap({
                     iconAnchor: [16, 16],
                     popupAnchor: [0, -16],
                 }),
-                // Current destination - Red flag/target with pulse effect
+                // Current destination - Red marker pin
                 current: L.icon({
                     iconUrl: "data:image/svg+xml;base64," + btoa(`
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56">
-                            <ellipse cx="24" cy="52" rx="10" ry="3" fill="rgba(239,68,68,0.3)"/>
-                            <path d="M24 0 C24 0 44 16 44 28 C44 40 36 48 24 48 C12 48 4 40 4 28 C4 16 24 0 24 0 Z" fill="#ef4444" stroke="#fff" stroke-width="2"/>
-                            <circle cx="24" cy="26" r="10" fill="#fff"/>
-                            <circle cx="24" cy="26" r="5" fill="#ef4444"/>
-                            <text x="24" y="8" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">NEXT</text>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="32" height="48">
+                            <path d="M12 0 C5.4 0 0 5.4 0 12 C0 21 12 36 12 36 C12 36 24 21 24 12 C24 5.4 18.6 0 12 0 Z" fill="#ef4444" stroke="#fff" stroke-width="1.5"/>
+                            <circle cx="12" cy="12" r="5" fill="#fff"/>
                         </svg>
                     `),
-                    iconSize: [48, 56],
-                    iconAnchor: [24, 52],
-                    popupAnchor: [0, -52],
+                    iconSize: [32, 48],
+                    iconAnchor: [16, 48],
+                    popupAnchor: [0, -48],
                 }),
                 // Upcoming stops - Blue circle with number
                 upcoming: L.icon({

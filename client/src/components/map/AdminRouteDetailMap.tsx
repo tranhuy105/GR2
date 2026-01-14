@@ -46,7 +46,7 @@ export function AdminRouteDetailMap({
     const [icons, setIcons] = useState<{
         depot: L.Icon;
         completed: L.Icon;
-        current: L.Icon;
+        current: any;
         upcoming: L.Icon;
         driver: any;
     } | null>(null);
@@ -89,15 +89,14 @@ export function AdminRouteDetailMap({
                 }),
                 current: L.icon({
                     iconUrl: "data:image/svg+xml;base64," + btoa(`
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 44" width="36" height="44">
-                            <path d="M18 0 C18 0 34 12 34 22 C34 32 28 40 18 40 C8 40 2 32 2 22 C2 12 18 0 18 0 Z" fill="#ef4444" stroke="#fff" stroke-width="2"/>
-                            <circle cx="18" cy="20" r="8" fill="#fff"/>
-                            <circle cx="18" cy="20" r="4" fill="#ef4444"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="42">
+                            <path d="M12 0 C5.4 0 0 5.4 0 12 C0 21 12 36 12 36 C12 36 24 21 24 12 C24 5.4 18.6 0 12 0 Z" fill="#ef4444" stroke="#fff" stroke-width="1.5"/>
+                            <circle cx="12" cy="12" r="5" fill="#fff"/>
                         </svg>
                     `),
-                    iconSize: [36, 44],
-                    iconAnchor: [18, 40],
-                    popupAnchor: [0, -40],
+                    iconSize: [28, 42],
+                    iconAnchor: [14, 42],
+                    popupAnchor: [0, -42],
                 }),
                 upcoming: L.icon({
                     iconUrl: "data:image/svg+xml;base64," + btoa(`
