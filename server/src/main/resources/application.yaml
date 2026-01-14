@@ -1,0 +1,58 @@
+spring:
+  application:
+    name: evrptw-server
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  datasource:
+    url: jdbc:h2:mem:fleetdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+
+server:
+  port: 8080
+
+# JWT Configuration
+jwt:
+  secret: evrptw-fleet-management-secret-key-for-jwt-token-generation-min-256-bits
+  expiration: 86400000
+
+# ALNS Algorithm Configuration
+alns:
+  default-iterations: 5000
+  default-time-limit: 0
+  cooling-rate: 0.9995
+  segment-size: 100
+  station-removal-interval: 500
+  penalties:
+    vehicle: 100000
+    capacity: 10000
+    time: 10000
+    battery: 10000
+  shaw:
+    phi:
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+    eta: 2.0
+
+# Logging
+logging:
+  level:
+    com.tranhuy105.server: INFO
+    com.tranhuy105.server.algorithm: INFO
