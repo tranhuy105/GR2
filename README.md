@@ -20,15 +20,21 @@ Gồm 3 folder chính:
 
 ## Quick Start
 
-1.  **Core Algo**:
+1.  **Clone Repo**:
+    ```bash
+    git clone https://github.com/tranhuy105/GR2.git
+    cd GR2
+    ```
+
+2.  **Core Algo** (Must Build First):
     *   Cần build ra jar trước để Server gọi được.
     *   `cd core_algo` -> `mvn package -q -DskipTests`
 
-2.  **Server**:
+3.  **Server**:
     *   `cd server` -> `mvnw spring-boot:run`
     *   API: `localhost:8080`
 
-3.  **Client**:
+4.  **Client**:
     *   `cd client` -> `npm install` -> `npm run dev`
     *   Web: `localhost:3000`
 
