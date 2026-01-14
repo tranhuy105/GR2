@@ -39,7 +39,6 @@ import type {
     OptimizationResponse,
     RouteAssignRequest,
     SwapStation,
-    Vehicle,
 } from "@/types";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -52,7 +51,6 @@ export default function RoutesPage() {
         DeliveryOrder[]
     >([]);
     const [drivers, setDrivers] = useState<Driver[]>([]);
-    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [stations, setStations] = useState<SwapStation[]>(
         []
     );
@@ -194,19 +192,16 @@ export default function RoutesPage() {
                 routesData,
                 ordersData,
                 driversData,
-                vehiclesData,
                 stationsData,
             ] = await Promise.all([
                 api.getRoutes(),
                 api.getOrders(), // Load ALL orders for map
                 api.getAvailableDrivers(),
-                api.getAvailableVehicles(),
                 api.getActiveStations(),
             ]);
             setRoutes(routesData);
             setAllOrders(ordersData);
             setDrivers(driversData);
-            setVehicles(vehiclesData);
             setStations(stationsData);
         } catch (error) {
             console.error("Failed to load data:", error);
@@ -227,9 +222,10 @@ export default function RoutesPage() {
         try {
             const result = await api.optimizeFleet({
                 orderIds,
+                driverIds: drivers.map((d) => d.id),
                 stationIds: stations.map((s) => s.id),
                 chargingMode: "BATTERY_SWAP",
-                batterySwapTime: 5,
+                batterySwapTime: 5 / 60, // 5 minutes converted to hours
                 parallel: true,
             });
             setOptimizationResult(result);
@@ -393,7 +389,6 @@ export default function RoutesPage() {
                             <AssignRouteForm
                                 orders={pendingOrders}
                                 drivers={drivers}
-                                vehicles={vehicles}
                                 onSubmit={handleAssignRoute}
                                 onCancel={() =>
                                     setIsAssignDialogOpen(
@@ -478,6 +473,18 @@ export default function RoutesPage() {
                             </div>
                         </div>
 
+                        {optimizationResult.summary.insufficientDrivers && (
+                            <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-700/50 rounded-lg flex items-center gap-3">
+                                <span className="text-xl">⚠️</span>
+                                <div>
+                                    <p className="text-yellow-400 font-medium">Thiếu tài xế</p>
+                                    <p className="text-sm text-zinc-400">
+                                        Cần {optimizationResult.summary.requiredDriverCount} tài xế nhưng chỉ có {optimizationResult.summary.availableDriverCount} sẵn sàng.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <Badge
@@ -544,7 +551,7 @@ export default function RoutesPage() {
                     <FleetMap
                         stations={stations}
                         orders={mapOrders}
-                        vehicles={vehicles}
+                        drivers={drivers}
                         routes={mapRouteLines}
                         depotPosition={DEPOT_POSITION}
                         showDepot={true}
@@ -671,7 +678,7 @@ export default function RoutesPage() {
                                         </span>
                                         <p className="font-medium">
                                             {
-                                                route.vehiclePlate
+                                                route.licensePlate
                                             }
                                         </p>
                                     </div>
@@ -812,7 +819,7 @@ export default function RoutesPage() {
                                     </p>
                                     <p className="text-lg font-medium">
                                         {
-                                            selectedRoute.vehiclePlate
+                                            selectedRoute.licensePlate
                                         }
                                     </p>
                                 </div>
@@ -939,13 +946,11 @@ export default function RoutesPage() {
 function AssignRouteForm({
     orders,
     drivers,
-    vehicles,
     onSubmit,
     onCancel,
 }: {
     orders: DeliveryOrder[];
     drivers: Driver[];
-    vehicles: Vehicle[];
     onSubmit: (data: RouteAssignRequest) => void;
     onCancel: () => void;
 }) {
@@ -955,15 +960,11 @@ function AssignRouteForm({
     const [driverId, setDriverId] = useState<number | null>(
         null
     );
-    const [vehicleId, setVehicleId] = useState<
-        number | null
-    >(null);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (
             !driverId ||
-            !vehicleId ||
             selectedOrders.length === 0
         ) {
             toast.error("Vui lòng chọn đầy đủ thông tin");
@@ -971,7 +972,6 @@ function AssignRouteForm({
         }
         onSubmit({
             driverId,
-            vehicleId,
             orderIds: selectedOrders,
         });
     };
@@ -987,7 +987,7 @@ function AssignRouteForm({
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-                <Label>Tài xế</Label>
+                <Label>Tài xế (kèm xe)</Label>
                 <Select
                     onValueChange={(v) =>
                         setDriverId(parseInt(v))
@@ -1002,31 +1002,7 @@ function AssignRouteForm({
                                 key={driver.id}
                                 value={driver.id.toString()}
                             >
-                                {driver.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-
-            <div className="space-y-2">
-                <Label>Xe</Label>
-                <Select
-                    onValueChange={(v) =>
-                        setVehicleId(parseInt(v))
-                    }
-                >
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700">
-                        <SelectValue placeholder="Chọn xe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {vehicles.map((vehicle) => (
-                            <SelectItem
-                                key={vehicle.id}
-                                value={vehicle.id.toString()}
-                            >
-                                {vehicle.licensePlate} (
-                                {vehicle.batteryLevel}%)
+                                {driver.name} {driver.licensePlate ? `(${driver.licensePlate})` : ''}
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -1091,7 +1067,6 @@ function AssignRouteForm({
                     type="submit"
                     disabled={
                         !driverId ||
-                        !vehicleId ||
                         selectedOrders.length === 0
                     }
                 >
@@ -1101,3 +1076,4 @@ function AssignRouteForm({
         </form>
     );
 }
+

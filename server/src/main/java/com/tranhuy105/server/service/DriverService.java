@@ -1,24 +1,23 @@
 package com.tranhuy105.server.service;
 
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.tranhuy105.server.dto.DriverCreateRequest;
 import com.tranhuy105.server.dto.DriverDTO;
 import com.tranhuy105.server.entity.Driver;
 import com.tranhuy105.server.entity.DriverStatus;
-import com.tranhuy105.server.entity.Vehicle;
 import com.tranhuy105.server.repository.DriverRepository;
-import com.tranhuy105.server.repository.VehicleRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class DriverService {
     
     private final DriverRepository driverRepository;
-    private final VehicleRepository vehicleRepository;
     
     public List<DriverDTO> getAllDrivers() {
         return driverRepository.findAll().stream()
@@ -37,14 +36,11 @@ public class DriverService {
         Driver driver = Driver.builder()
                 .name(request.getName())
                 .phone(request.getPhone())
+                .licensePlate(request.getLicensePlate())
+                .batteryCapacity(request.getBatteryCapacity() != null ? request.getBatteryCapacity() : 100.0)
+                .loadCapacity(request.getLoadCapacity() != null ? request.getLoadCapacity() : 50.0)
                 .status(DriverStatus.OFFLINE)
                 .build();
-        
-        if (request.getVehicleId() != null) {
-            Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
-                    .orElseThrow(() -> new RuntimeException("Vehicle not found: " + request.getVehicleId()));
-            driver.setCurrentVehicle(vehicle);
-        }
         
         return DriverDTO.fromEntity(driverRepository.save(driver));
     }
@@ -57,12 +53,14 @@ public class DriverService {
         driver.setName(request.getName());
         driver.setPhone(request.getPhone());
         
-        if (request.getVehicleId() != null) {
-            Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
-                    .orElseThrow(() -> new RuntimeException("Vehicle not found: " + request.getVehicleId()));
-            driver.setCurrentVehicle(vehicle);
-        } else {
-            driver.setCurrentVehicle(null);
+        if (request.getLicensePlate() != null) {
+            driver.setLicensePlate(request.getLicensePlate());
+        }
+        if (request.getBatteryCapacity() != null) {
+            driver.setBatteryCapacity(request.getBatteryCapacity());
+        }
+        if (request.getLoadCapacity() != null) {
+            driver.setLoadCapacity(request.getLoadCapacity());
         }
         
         return DriverDTO.fromEntity(driverRepository.save(driver));

@@ -1,14 +1,15 @@
 package com.tranhuy105.server.dto;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import com.tranhuy105.server.entity.AssignedRoute;
 import com.tranhuy105.server.entity.RouteStatus;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Builder
@@ -18,8 +19,7 @@ public class RouteDTO {
     private Long id;
     private Long driverId;
     private String driverName;
-    private Long vehicleId;
-    private String vehiclePlate;
+    private String licensePlate;  // From driver's vehicle properties
     private RouteStatus status;
     private String stopsJson;
     private List<RouteStopDTO> stops;
@@ -37,8 +37,7 @@ public class RouteDTO {
                 .id(route.getId())
                 .driverId(route.getDriver().getId())
                 .driverName(route.getDriver().getName())
-                .vehicleId(route.getVehicle().getId())
-                .vehiclePlate(route.getVehicle().getLicensePlate())
+                .licensePlate(route.getDriver().getLicensePlate())
                 .status(route.getStatus())
                 .stopsJson(route.getStopsJson())
                 .totalDistance(route.getTotalDistance())

@@ -17,7 +17,7 @@ export interface AuthResponse {
     driverId?: number;
 }
 
-// Driver types
+// Driver types (Driver = Vehicle in this model)
 export type DriverStatus =
     | "AVAILABLE"
     | "ON_ROUTE"
@@ -28,26 +28,9 @@ export interface Driver {
     name: string;
     phone: string;
     status: DriverStatus;
-    currentVehicleId?: number;
-    currentVehiclePlate?: string;
-}
-
-// Vehicle types
-export type VehicleStatus =
-    | "AVAILABLE"
-    | "IN_USE"
-    | "CHARGING";
-
-export interface Vehicle {
-    id: number;
-    licensePlate: string;
-    batteryLevel: number;
-    batteryCapacity: number;
-    status: VehicleStatus;
-    currentDriverId?: number;
-    currentDriverName?: string;
-    currentLat?: number;
-    currentLng?: number;
+    licensePlate?: string;       // Vehicle license plate
+    batteryCapacity?: number;    // Vehicle battery capacity
+    loadCapacity?: number;       // Vehicle cargo capacity
 }
 
 // SwapStation types
@@ -114,8 +97,7 @@ export interface AssignedRoute {
     id: number;
     driverId: number;
     driverName: string;
-    vehicleId: number;
-    vehiclePlate: string;
+    licensePlate?: string;  // From driver
     status: RouteStatus;
     stops: RouteStop[];
     totalDistance?: number;
@@ -133,7 +115,7 @@ export type ChargingMode = "FULL_RECHARGE" | "BATTERY_SWAP";
 
 export interface OptimizationRequest {
     orderIds: number[];
-    vehicleIds?: number[];
+    driverIds?: number[];   // Changed from vehicleIds
     stationIds?: number[];
     chargingMode?: ChargingMode;
     batterySwapTime?: number;
@@ -158,6 +140,9 @@ export interface OptimizedStop {
 
 export interface OptimizedRoute {
     vehicleId: number;
+    driverId?: number;       // Actual driver ID from backend
+    driverName?: string;     // Driver name for display
+    licensePlate?: string;   // License plate for display
     stops: OptimizedStop[];
     distance: number;
     feasible: boolean;
@@ -170,6 +155,10 @@ export interface OptimizationSummary {
     feasible: boolean;
     totalCustomers: number;
     totalStations: number;
+    // Soft constraint warning
+    insufficientDrivers?: boolean;
+    requiredDriverCount?: number;
+    availableDriverCount?: number;
 }
 
 export interface OptimizationResponse {
@@ -197,14 +186,9 @@ export interface OrderCreateRequest {
 export interface DriverCreateRequest {
     name: string;
     phone: string;
-    vehicleId?: number;
-}
-
-export interface VehicleCreateRequest {
-    licensePlate: string;
+    licensePlate?: string;
     batteryCapacity?: number;
-    currentLat?: number;
-    currentLng?: number;
+    loadCapacity?: number;
 }
 
 export interface SwapStationCreateRequest {
@@ -220,7 +204,6 @@ export interface SwapStationCreateRequest {
 
 export interface RouteAssignRequest {
     driverId: number;
-    vehicleId: number;
     orderIds: number[];
     customStops?: RouteStop[];
 }

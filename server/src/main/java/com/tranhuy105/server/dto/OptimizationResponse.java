@@ -17,6 +17,9 @@ public class OptimizationResponse {
     @Data
     public static class RouteDTO {
         private int vehicleId;
+        private Long driverId;           // Actual driver ID from database
+        private String driverName;       // Driver name for display
+        private String licensePlate;     // Vehicle license plate
         private List<StopDTO> stops;
         private double distance;
         private boolean feasible;
@@ -39,5 +42,9 @@ public class OptimizationResponse {
         private boolean feasible;
         private int totalCustomers;
         private int totalStations;
+        // Soft constraint warning
+        private Boolean insufficientDrivers;
+        private Integer requiredDriverCount;
+        private Integer availableDriverCount;
     }
 }

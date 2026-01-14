@@ -1,11 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -13,21 +10,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
-  SelectTrigger,
-  SelectValue,
+  SelectTrigger
 } from '@/components/ui/select';
 import { api } from '@/lib/api';
 import { statusColors, statusLabels } from '@/lib/utils';
+import type { Driver, DriverCreateRequest, DriverStatus } from '@/types';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import type { Driver, Vehicle, DriverCreateRequest, DriverStatus } from '@/types';
 
 export default function DriversPage() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
@@ -38,12 +36,8 @@ export default function DriversPage() {
 
   const loadData = async () => {
     try {
-      const [driversData, vehiclesData] = await Promise.all([
-        api.getDrivers(),
-        api.getVehicles(),
-      ]);
+      const driversData = await api.getDrivers();
       setDrivers(driversData);
-      setVehicles(vehiclesData);
     } catch (error) {
       console.error('Failed to load data:', error);
       toast.error('Không thể tải dữ liệu');
@@ -123,7 +117,6 @@ export default function DriversPage() {
             </DialogHeader>
             <DriverForm
               initialData={editingDriver}
-              vehicles={vehicles}
               onSubmit={handleSubmit}
               onCancel={() => {
                 setIsDialogOpen(false);
@@ -163,10 +156,16 @@ export default function DriversPage() {
                 <span>📞</span>
                 <span>{driver.phone}</span>
               </div>
-              {driver.currentVehiclePlate && (
+              {driver.licensePlate && (
                 <div className="flex items-center gap-2 text-sm text-zinc-400">
                   <span>🛵</span>
-                  <span>{driver.currentVehiclePlate}</span>
+                  <span>{driver.licensePlate}</span>
+                </div>
+              )}
+              {driver.batteryCapacity && (
+                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                  <span>🔋</span>
+                  <span>Dung lượng: {driver.batteryCapacity} kWh</span>
                 </div>
               )}
               <div className="flex gap-2 pt-2">
@@ -206,24 +205,20 @@ export default function DriversPage() {
 
 function DriverForm({
   initialData,
-  vehicles,
   onSubmit,
   onCancel,
 }: {
   initialData: Driver | null;
-  vehicles: Vehicle[];
   onSubmit: (data: DriverCreateRequest) => void;
   onCancel: () => void;
 }) {
   const [formData, setFormData] = useState<DriverCreateRequest>({
     name: initialData?.name || '',
     phone: initialData?.phone || '',
-    vehicleId: initialData?.currentVehicleId,
+    licensePlate: initialData?.licensePlate || '',
+    batteryCapacity: initialData?.batteryCapacity,
+    loadCapacity: initialData?.loadCapacity,
   });
-
-  const availableVehicles = vehicles.filter(
-    (v) => v.status === 'AVAILABLE' || v.id === initialData?.currentVehicleId
-  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,25 +248,36 @@ function DriverForm({
       </div>
 
       <div className="space-y-2">
-        <Label>Xe được gán</Label>
-        <Select
-          value={formData.vehicleId?.toString() || 'none'}
-          onValueChange={(v) =>
-            setFormData({ ...formData, vehicleId: v === 'none' ? undefined : parseInt(v) })
-          }
-        >
-          <SelectTrigger className="bg-zinc-800 border-zinc-700">
-            <SelectValue placeholder="Chọn xe" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Không có</SelectItem>
-            {availableVehicles.map((vehicle) => (
-              <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
-                {vehicle.licensePlate} ({vehicle.batteryLevel}%)
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label>Biển số xe</Label>
+        <Input
+          value={formData.licensePlate || ''}
+          onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
+          placeholder="VD: 59A1-001"
+          className="bg-zinc-800 border-zinc-700"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Dung lượng pin (kWh)</Label>
+          <Input
+            type="number"
+            value={formData.batteryCapacity || ''}
+            onChange={(e) => setFormData({ ...formData, batteryCapacity: e.target.value ? parseFloat(e.target.value) : undefined })}
+            placeholder="77.75"
+            className="bg-zinc-800 border-zinc-700"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Tải trọng (kg)</Label>
+          <Input
+            type="number"
+            value={formData.loadCapacity || ''}
+            onChange={(e) => setFormData({ ...formData, loadCapacity: e.target.value ? parseFloat(e.target.value) : undefined })}
+            placeholder="200"
+            className="bg-zinc-800 border-zinc-700"
+          />
+        </div>
       </div>
 
       <div className="flex justify-end gap-2 pt-4">

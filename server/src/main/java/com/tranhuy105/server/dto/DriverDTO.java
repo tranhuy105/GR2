@@ -2,6 +2,7 @@ package com.tranhuy105.server.dto;
 
 import com.tranhuy105.server.entity.Driver;
 import com.tranhuy105.server.entity.DriverStatus;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,8 +17,9 @@ public class DriverDTO {
     private String name;
     private String phone;
     private DriverStatus status;
-    private Long currentVehicleId;
-    private String currentVehiclePlate;
+    private String licensePlate;
+    private Double batteryCapacity;
+    private Double loadCapacity;
     
     public static DriverDTO fromEntity(Driver driver) {
         return DriverDTO.builder()
@@ -25,8 +27,9 @@ public class DriverDTO {
                 .name(driver.getName())
                 .phone(driver.getPhone())
                 .status(driver.getStatus())
-                .currentVehicleId(driver.getCurrentVehicle() != null ? driver.getCurrentVehicle().getId() : null)
-                .currentVehiclePlate(driver.getCurrentVehicle() != null ? driver.getCurrentVehicle().getLicensePlate() : null)
+                .licensePlate(driver.getLicensePlate())
+                .batteryCapacity(driver.getBatteryCapacity())
+                .loadCapacity(driver.getLoadCapacity())
                 .build();
     }
 }

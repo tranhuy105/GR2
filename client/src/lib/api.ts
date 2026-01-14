@@ -13,9 +13,6 @@ import type {
     SwapStation,
     SwapStationCreateRequest,
     User,
-    Vehicle,
-    VehicleCreateRequest,
-    VehicleStatus,
 } from "@/types";
 import axios, { AxiosError, AxiosInstance } from "axios";
 
@@ -81,7 +78,7 @@ class ApiClient {
         return response.data;
     }
 
-    // Drivers
+    // Drivers (Driver = Vehicle in this model)
     async getDrivers(): Promise<Driver[]> {
         const response = await this.client.get<Driver[]>(
             "/api/drivers"
@@ -136,63 +133,6 @@ class ApiClient {
 
     async deleteDriver(id: number): Promise<void> {
         await this.client.delete(`/api/drivers/${id}`);
-    }
-
-    // Vehicles
-    async getVehicles(): Promise<Vehicle[]> {
-        const response = await this.client.get<Vehicle[]>(
-            "/api/vehicles"
-        );
-        return response.data;
-    }
-
-    async getVehicle(id: number): Promise<Vehicle> {
-        const response = await this.client.get<Vehicle>(
-            `/api/vehicles/${id}`
-        );
-        return response.data;
-    }
-
-    async getAvailableVehicles(): Promise<Vehicle[]> {
-        const response = await this.client.get<Vehicle[]>(
-            "/api/vehicles/available"
-        );
-        return response.data;
-    }
-
-    async createVehicle(
-        data: VehicleCreateRequest
-    ): Promise<Vehicle> {
-        const response = await this.client.post<Vehicle>(
-            "/api/vehicles",
-            data
-        );
-        return response.data;
-    }
-
-    async updateVehicle(
-        id: number,
-        data: VehicleCreateRequest
-    ): Promise<Vehicle> {
-        const response = await this.client.put<Vehicle>(
-            `/api/vehicles/${id}`,
-            data
-        );
-        return response.data;
-    }
-
-    async updateVehicleStatus(
-        id: number,
-        status: VehicleStatus
-    ): Promise<Vehicle> {
-        const response = await this.client.put<Vehicle>(
-            `/api/vehicles/${id}/status?status=${status}`
-        );
-        return response.data;
-    }
-
-    async deleteVehicle(id: number): Promise<void> {
-        await this.client.delete(`/api/vehicles/${id}`);
     }
 
     // Swap Stations

@@ -22,9 +22,12 @@ import com.tranhuy105.server.dto.OptimizationResponse.RouteDTO;
 import com.tranhuy105.server.dto.OptimizationResponse.StopDTO;
 import com.tranhuy105.server.dto.OptimizationResponse.SummaryDTO;
 import com.tranhuy105.server.entity.DeliveryOrder;
+import com.tranhuy105.server.entity.Driver;
+import com.tranhuy105.server.entity.DriverStatus;
 import com.tranhuy105.server.entity.SwapStation;
 import com.tranhuy105.server.exception.OptimizationException;
 import com.tranhuy105.server.repository.DeliveryOrderRepository;
+import com.tranhuy105.server.repository.DriverRepository;
 import com.tranhuy105.server.repository.SwapStationRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -42,6 +45,7 @@ public class OptimizationService {
     private final ParallelALNSSolver parallelSolver;
     private final DeliveryOrderRepository orderRepository;
     private final SwapStationRepository stationRepository;
+    private final DriverRepository driverRepository;
 
     /**
      * Optimize from uploaded file with charging mode support
@@ -117,6 +121,14 @@ public class OptimizationService {
             throw new OptimizationException("No orders found");
         }
         
+        // Fetch drivers
+        List<Driver> drivers;
+        if (request.getDriverIds() != null && !request.getDriverIds().isEmpty()) {
+            drivers = driverRepository.findAllById(request.getDriverIds());
+        } else {
+            drivers = driverRepository.findByStatus(DriverStatus.AVAILABLE);
+        }
+        
         // Fetch stations
         List<SwapStation> stations;
         if (request.getStationIds() != null && !request.getStationIds().isEmpty()) {
@@ -134,7 +146,7 @@ public class OptimizationService {
         
         long computeTime = System.currentTimeMillis() - startTime;
         
-        return buildFleetResponse(solution, instance, computeTime, request.getChargingMode(), orders);
+        return buildFleetResponse(solution, instance, computeTime, request.getChargingMode(), orders, drivers);
     }
 
     private Instance buildInstanceFromFleet(FleetOptimizationRequest request, 
@@ -285,11 +297,33 @@ public class OptimizationService {
 
     private OptimizationResponse buildFleetResponse(Solution solution, Instance instance, 
                                                      long computeTime, ChargingMode chargingMode,
-                                                     List<DeliveryOrder> orders) {
+                                                     List<DeliveryOrder> orders, List<Driver> drivers) {
         OptimizationResponse response = buildResponse(solution, instance, computeTime, chargingMode);
         
-        // Add order mapping to response for frontend
-        // This helps the frontend map optimized routes back to original orders
+        // Map routes to drivers
+        List<RouteDTO> routes = response.getRoutes();
+        int routeCount = routes.size();
+        int driverCount = drivers.size();
+        
+        for (int i = 0; i < routeCount; i++) {
+            RouteDTO route = routes.get(i);
+            if (i < driverCount) {
+                Driver driver = drivers.get(i);
+                route.setDriverId(driver.getId());
+                route.setDriverName(driver.getName());
+                route.setLicensePlate(driver.getLicensePlate());
+            }
+        }
+        
+        // Set soft constraint warning if insufficient drivers
+        SummaryDTO summary = response.getSummary();
+        summary.setRequiredDriverCount(routeCount);
+        summary.setAvailableDriverCount(driverCount);
+        summary.setInsufficientDrivers(routeCount > driverCount);
+        
+        if (routeCount > driverCount) {
+            log.warn("Optimization requires {} routes but only {} drivers available", routeCount, driverCount);
+        }
         
         return response;
     }

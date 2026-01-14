@@ -1,27 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { AuthProvider } from '@/components/auth/AuthProvider';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAuthStore } from '@/lib/auth';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { AuthProvider } from '@/components/auth/AuthProvider';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 
 const navItems = [
   { href: '/dashboard', label: 'Tổng quan', icon: HomeIcon },
   { href: '/dashboard/orders', label: 'Đơn hàng', icon: PackageIcon },
   { href: '/dashboard/drivers', label: 'Tài xế', icon: UsersIcon },
-  { href: '/dashboard/vehicles', label: 'Xe', icon: TruckIcon },
   { href: '/dashboard/stations', label: 'Trạm đổi pin', icon: BatteryIcon },
   { href: '/dashboard/routes', label: 'Lộ trình', icon: MapIcon },
 ];

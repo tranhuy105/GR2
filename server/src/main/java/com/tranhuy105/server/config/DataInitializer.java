@@ -11,13 +11,10 @@ import com.tranhuy105.server.entity.OrderStatus;
 import com.tranhuy105.server.entity.Role;
 import com.tranhuy105.server.entity.SwapStation;
 import com.tranhuy105.server.entity.User;
-import com.tranhuy105.server.entity.Vehicle;
-import com.tranhuy105.server.entity.VehicleStatus;
 import com.tranhuy105.server.repository.DeliveryOrderRepository;
 import com.tranhuy105.server.repository.DriverRepository;
 import com.tranhuy105.server.repository.SwapStationRepository;
 import com.tranhuy105.server.repository.UserRepository;
-import com.tranhuy105.server.repository.VehicleRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +26,6 @@ public class DataInitializer implements CommandLineRunner {
     
     private final UserRepository userRepository;
     private final DriverRepository driverRepository;
-    private final VehicleRepository vehicleRepository;
     private final SwapStationRepository swapStationRepository;
     private final DeliveryOrderRepository orderRepository;
     private final PasswordEncoder passwordEncoder;
@@ -47,89 +43,50 @@ public class DataInitializer implements CommandLineRunner {
         
         log.info("Initializing demo data based on EVRPTW test case c101C5...");
         
-        // Create 5 vehicles with varying battery levels (like real fleet)
-        Vehicle vehicle1 = vehicleRepository.save(Vehicle.builder()
-                .licensePlate("59A1-001")
-                .batteryLevel(100.0)
-                .batteryCapacity(77.75) // Q from test data
-                .loadCapacity(200.0)    // C from test data
-                .status(VehicleStatus.AVAILABLE)
-                .currentLat(DEPOT_LAT)
-                .currentLng(DEPOT_LNG)
-                .build());
-        
-        Vehicle vehicle2 = vehicleRepository.save(Vehicle.builder()
-                .licensePlate("59A1-002")
-                .batteryLevel(85.0)
-                .batteryCapacity(77.75)
-                .loadCapacity(200.0)
-                .status(VehicleStatus.AVAILABLE)
-                .currentLat(DEPOT_LAT)
-                .currentLng(DEPOT_LNG)
-                .build());
-        
-        Vehicle vehicle3 = vehicleRepository.save(Vehicle.builder()
-                .licensePlate("59A1-003")
-                .batteryLevel(70.0)
-                .batteryCapacity(77.75)
-                .loadCapacity(200.0)
-                .status(VehicleStatus.AVAILABLE)
-                .currentLat(DEPOT_LAT)
-                .currentLng(DEPOT_LNG)
-                .build());
-        
-        Vehicle vehicle4 = vehicleRepository.save(Vehicle.builder()
-                .licensePlate("59A1-004")
-                .batteryLevel(90.0)
-                .batteryCapacity(77.75)
-                .loadCapacity(200.0)
-                .status(VehicleStatus.AVAILABLE)
-                .currentLat(DEPOT_LAT)
-                .currentLng(DEPOT_LNG)
-                .build());
-        
-        Vehicle vehicle5 = vehicleRepository.save(Vehicle.builder()
-                .licensePlate("59A1-005")
-                .batteryLevel(55.0)  // Low battery - might need swap
-                .batteryCapacity(77.75)
-                .loadCapacity(200.0)
-                .status(VehicleStatus.AVAILABLE)
-                .currentLat(DEPOT_LAT)
-                .currentLng(DEPOT_LNG)
-                .build());
-        
-        // Create 5 drivers
+        // Create 5 drivers (Driver = Vehicle in this model)
+        // All drivers have homogeneous vehicle specs
         Driver driver1 = driverRepository.save(Driver.builder()
                 .name("Nguyen Van An")
                 .phone("0901001001")
+                .licensePlate("59A1-001")
+                .batteryCapacity(77.75)  // Q from test data
+                .loadCapacity(200.0)     // C from test data
                 .status(DriverStatus.AVAILABLE)
-                .currentVehicle(vehicle1)
                 .build());
         
         Driver driver2 = driverRepository.save(Driver.builder()
                 .name("Tran Thi Binh")
                 .phone("0901001002")
+                .licensePlate("59A1-002")
+                .batteryCapacity(77.75)
+                .loadCapacity(200.0)
                 .status(DriverStatus.AVAILABLE)
-                .currentVehicle(vehicle2)
                 .build());
         
         Driver driver3 = driverRepository.save(Driver.builder()
                 .name("Le Van Cuong")
                 .phone("0901001003")
+                .licensePlate("59A1-003")
+                .batteryCapacity(77.75)
+                .loadCapacity(200.0)
                 .status(DriverStatus.AVAILABLE)
-                .currentVehicle(vehicle3)
                 .build());
         
         Driver driver4 = driverRepository.save(Driver.builder()
                 .name("Pham Thi Dung")
                 .phone("0901001004")
+                .licensePlate("59A1-004")
+                .batteryCapacity(77.75)
+                .loadCapacity(200.0)
                 .status(DriverStatus.AVAILABLE)
-                .currentVehicle(vehicle4)
                 .build());
         
         Driver driver5 = driverRepository.save(Driver.builder()
                 .name("Hoang Van Em")
                 .phone("0901001005")
+                .licensePlate("59A1-005")
+                .batteryCapacity(77.75)
+                .loadCapacity(200.0)
                 .status(DriverStatus.OFFLINE)
                 .build());
         
@@ -377,7 +334,7 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Based on EVRPTW test case c101C5");
         log.info("===========================================");
         log.info("Depot location: {}, {}", DEPOT_LAT, DEPOT_LNG);
-        log.info("Vehicles: 5 (battery capacity: 77.75, load: 200)");
+        log.info("Drivers: 5 with vehicles (battery: 77.75, load: 200)");
         log.info("Drivers: 5 (4 available, 1 offline)");
         log.info("Swap Stations: 5");
         log.info("Orders: 10 (with various time windows)");

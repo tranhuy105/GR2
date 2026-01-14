@@ -11,16 +11,14 @@ import {
 } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import {
-    formatBattery,
     formatTime,
     statusColors,
-    statusLabels,
+    statusLabels
 } from "@/lib/utils";
 import type {
     DeliveryOrder,
     Driver,
     SwapStation,
-    Vehicle,
 } from "@/types";
 import { useEffect, useState } from "react";
 
@@ -29,7 +27,6 @@ export default function DashboardPage() {
         []
     );
     const [drivers, setDrivers] = useState<Driver[]>([]);
-    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [stations, setStations] = useState<SwapStation[]>(
         []
     );
@@ -44,17 +41,14 @@ export default function DashboardPage() {
             const [
                 ordersData,
                 driversData,
-                vehiclesData,
                 stationsData,
             ] = await Promise.all([
                 api.getOrders(),
                 api.getDrivers(),
-                api.getVehicles(),
                 api.getActiveStations(),
             ]);
             setOrders(ordersData);
             setDrivers(driversData);
-            setVehicles(vehiclesData);
             setStations(stationsData);
         } catch (error) {
             console.error("Failed to load data:", error);
@@ -85,12 +79,7 @@ export default function DashboardPage() {
         onRouteDrivers: drivers.filter(
             (d) => d.status === "ON_ROUTE"
         ).length,
-        availableVehicles: vehicles.filter(
-            (v) => v.status === "AVAILABLE"
-        ).length,
-        lowBatteryVehicles: vehicles.filter(
-            (v) => v.batteryLevel < 30
-        ).length,
+        totalDrivers: drivers.length,
     };
 
     if (isLoading) {
@@ -150,7 +139,7 @@ export default function DashboardPage() {
                                     o.status ===
                                         "IN_PROGRESS"
                             )}
-                            vehicles={vehicles}
+                            drivers={drivers}
                             className="h-[400px]"
                         />
                     </CardContent>
@@ -206,59 +195,6 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Vehicles */}
-                    <Card className="bg-zinc-900 border-zinc-800">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm text-zinc-400">
-                                Xe
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            {vehicles
-                                .slice(0, 5)
-                                .map((vehicle) => (
-                                    <div
-                                        key={vehicle.id}
-                                        className="flex items-center justify-between"
-                                    >
-                                        <span className="text-sm">
-                                            {
-                                                vehicle.licensePlate
-                                            }
-                                        </span>
-                                        <div className="flex items-center gap-2">
-                                            <span
-                                                className={`text-xs ${
-                                                    vehicle.batteryLevel <
-                                                    30
-                                                        ? "text-red-500"
-                                                        : "text-green-500"
-                                                }`}
-                                            >
-                                                {formatBattery(
-                                                    vehicle.batteryLevel
-                                                )}
-                                            </span>
-                                            <Badge
-                                                className={
-                                                    statusColors[
-                                                        vehicle
-                                                            .status
-                                                    ]
-                                                }
-                                            >
-                                                {
-                                                    statusLabels[
-                                                        vehicle
-                                                            .status
-                                                    ]
-                                                }
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                ))}
-                        </CardContent>
-                    </Card>
 
                     {/* Stations */}
                     <Card className="bg-zinc-900 border-zinc-800">

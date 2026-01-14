@@ -210,7 +210,7 @@ function DriverContent() {
                                             </span>
                                             <p className="font-medium">
                                                 {
-                                                    route.vehiclePlate
+                                                    route.licensePlate
                                                 }
                                             </p>
                                         </div>

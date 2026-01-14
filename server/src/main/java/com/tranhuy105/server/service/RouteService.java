@@ -21,12 +21,9 @@ import com.tranhuy105.server.entity.Driver;
 import com.tranhuy105.server.entity.DriverStatus;
 import com.tranhuy105.server.entity.OrderStatus;
 import com.tranhuy105.server.entity.RouteStatus;
-import com.tranhuy105.server.entity.Vehicle;
-import com.tranhuy105.server.entity.VehicleStatus;
 import com.tranhuy105.server.repository.AssignedRouteRepository;
 import com.tranhuy105.server.repository.DeliveryOrderRepository;
 import com.tranhuy105.server.repository.DriverRepository;
-import com.tranhuy105.server.repository.VehicleRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +35,6 @@ public class RouteService {
     
     private final AssignedRouteRepository routeRepository;
     private final DriverRepository driverRepository;
-    private final VehicleRepository vehicleRepository;
     private final DeliveryOrderRepository orderRepository;
     private final ObjectMapper objectMapper;
     
@@ -70,9 +66,6 @@ public class RouteService {
     public RouteDTO assignRoute(RouteAssignRequest request) {
         Driver driver = driverRepository.findById(request.getDriverId())
                 .orElseThrow(() -> new RuntimeException("Driver not found: " + request.getDriverId()));
-        
-        Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
-                .orElseThrow(() -> new RuntimeException("Vehicle not found: " + request.getVehicleId()));
         
         List<DeliveryOrder> orders = orderRepository.findAllById(request.getOrderIds());
         if (orders.size() != request.getOrderIds().size()) {
@@ -111,7 +104,6 @@ public class RouteService {
         
         AssignedRoute route = AssignedRoute.builder()
                 .driver(driver)
-                .vehicle(vehicle)
                 .status(RouteStatus.PLANNED)
                 .stopsJson(stopsJson)
                 .totalStops(stops.size())
@@ -149,9 +141,8 @@ public class RouteService {
         route.setStatus(RouteStatus.IN_PROGRESS);
         route.setStartedAt(LocalDateTime.now());
         
-        // Update driver and vehicle status
+        // Update driver status
         route.getDriver().setStatus(DriverStatus.ON_ROUTE);
-        route.getVehicle().setStatus(VehicleStatus.IN_USE);
         
         // Update orders
         for (DeliveryOrder order : route.getOrders()) {
@@ -187,7 +178,6 @@ public class RouteService {
                 route.setStatus(RouteStatus.COMPLETED);
                 route.setCompletedAt(LocalDateTime.now());
                 route.getDriver().setStatus(DriverStatus.AVAILABLE);
-                route.getVehicle().setStatus(VehicleStatus.AVAILABLE);
                 
                 for (DeliveryOrder order : route.getOrders()) {
                     order.setStatus(OrderStatus.COMPLETED);
@@ -219,15 +209,11 @@ public class RouteService {
     
     @Transactional
     public List<RouteDTO> applyOptimization(ApplyOptimizationRequest request) {
-        // Get available drivers and vehicles
+        // Get available drivers
         List<Driver> availableDrivers = driverRepository.findByStatus(DriverStatus.AVAILABLE);
-        List<Vehicle> availableVehicles = vehicleRepository.findByStatus(VehicleStatus.AVAILABLE);
         
         if (availableDrivers.isEmpty()) {
             throw new RuntimeException("Không có tài xế khả dụng để gán lộ trình");
-        }
-        if (availableVehicles.isEmpty()) {
-            throw new RuntimeException("Không có xe khả dụng để gán lộ trình");
         }
         
         // Get orders
@@ -235,18 +221,15 @@ public class RouteService {
         
         List<RouteDTO> createdRoutes = new ArrayList<>();
         int driverIndex = 0;
-        int vehicleIndex = 0;
         
         for (ApplyOptimizationRequest.OptimizedRouteDTO optRoute : request.getRoutes()) {
             if (optRoute.getStops() == null || optRoute.getStops().isEmpty()) {
                 continue;
             }
             
-            // Get next available driver and vehicle (round-robin)
+            // Get next available driver (round-robin)
             Driver driver = availableDrivers.get(driverIndex % availableDrivers.size());
-            Vehicle vehicle = availableVehicles.get(vehicleIndex % availableVehicles.size());
             driverIndex++;
-            vehicleIndex++;
             
             // Build stops from optimization result
             List<RouteStopDTO> stops = new ArrayList<>();
@@ -284,7 +267,8 @@ public class RouteService {
                             .customerName(matchedOrder.getCustomerName())
                             .completed(false)
                             .build());
-                } else if ("CHARGING".equals(stopData.getType()) || (stopData.getType() != null && stopData.getType().contains("SWAP"))) {
+                } else if ("CHARGING".equals(stopData.getType()) || "STATION".equals(stopData.getType()) || 
+                           (stopData.getType() != null && stopData.getType().contains("SWAP"))) {
                     // Battery swap station
                     stops.add(RouteStopDTO.builder()
                             .sequence(sequence++)
@@ -310,7 +294,6 @@ public class RouteService {
             
             AssignedRoute route = AssignedRoute.builder()
                     .driver(driver)
-                    .vehicle(vehicle)
                     .status(RouteStatus.PLANNED)
                     .stopsJson(stopsJson)
                     .totalStops(stops.size())
@@ -328,11 +311,9 @@ public class RouteService {
             }
             orderRepository.saveAll(routeOrders);
             
-            // Update driver and vehicle status
+            // Update driver status
             driver.setStatus(DriverStatus.ON_ROUTE);
-            vehicle.setStatus(VehicleStatus.IN_USE);
             driverRepository.save(driver);
-            vehicleRepository.save(vehicle);
             
             createdRoutes.add(toDTO(route));
         }

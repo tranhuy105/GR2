@@ -48,7 +48,7 @@ export function AdminRouteDetailMap({
         completed: L.Icon;
         current: L.Icon;
         upcoming: L.Icon;
-        driver: L.Icon;
+        driver: any;
     } | null>(null);
 
     const sortedStops = [...stops].sort((a, b) => a.sequence - b.sequence);

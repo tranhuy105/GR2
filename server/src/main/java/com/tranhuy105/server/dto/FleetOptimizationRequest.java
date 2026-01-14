@@ -1,10 +1,11 @@
 package com.tranhuy105.server.dto;
 
+import java.util.List;
+
 import com.tranhuy105.server.domain.ChargingMode;
+
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
-
-import java.util.List;
 
 /**
  * Request for optimizing fleet routes from database orders
@@ -15,13 +16,13 @@ public class FleetOptimizationRequest {
     @NotEmpty(message = "At least one order ID is required")
     private List<Long> orderIds;
     
-    private List<Long> vehicleIds;
+    private List<Long> driverIds;  // Optional: available drivers for this optimization
     
     private List<Long> stationIds;
     
     private ChargingMode chargingMode = ChargingMode.BATTERY_SWAP;
     
-    private Double batterySwapTime = 5.0;
+    private Double batterySwapTime = 0.083; // 5 minutes
     
     private Double batteryCapacity = 100.0;
     

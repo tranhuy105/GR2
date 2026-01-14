@@ -2,8 +2,8 @@
 
 import type {
     DeliveryOrder,
+    Driver,
     SwapStation,
-    Vehicle,
 } from "@/types";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
@@ -44,7 +44,7 @@ const Polyline = dynamic(
 interface FleetMapProps {
     stations?: SwapStation[];
     orders?: DeliveryOrder[];
-    vehicles?: Vehicle[];
+    drivers?: Driver[];  // Drivers with vehicle info
     routes?: Array<{
         points: [number, number][];
         color: string;
@@ -68,7 +68,7 @@ const DEFAULT_DEPOT: [number, number] = [21.0285, 105.8542];
 export function FleetMap({
     stations = [],
     orders = [],
-    vehicles = [],
+    drivers = [],
     routes = [],
     center = DEFAULT_DEPOT,
     depotPosition = DEFAULT_DEPOT,
@@ -84,7 +84,7 @@ export function FleetMap({
         customer: L.Icon;
         vehicle: L.Icon;
         depot: L.Icon;
-        driver: L.Icon;
+        driver: any;
     } | null>(null);
 
     useEffect(() => {
@@ -283,36 +283,26 @@ export function FleetMap({
                         </Marker>
                     ))}
 
-                {/* Vehicle markers */}
-                {vehicles.map((vehicle) =>
-                    vehicle.currentLat &&
-                    vehicle.currentLng ? (
-                        <Marker
-                            key={`vehicle-${vehicle.id}`}
-                            position={[
-                                vehicle.currentLat,
-                                vehicle.currentLng,
-                            ]}
-                            icon={icons.vehicle}
-                        >
-                            <Popup>
-                                <div className="text-sm">
-                                    <strong>
-                                        {
-                                            vehicle.licensePlate
-                                        }
-                                    </strong>
-                                    <br />
-                                    Pin:{" "}
-                                    {vehicle.batteryLevel}%
-                                    <br />
-                                    {vehicle.currentDriverName &&
-                                        `Tài xế: ${vehicle.currentDriverName}`}
-                                </div>
-                            </Popup>
-                        </Marker>
-                    ) : null
-                )}
+                {/* Driver/Vehicle markers - Drivers with vehicle info, display at depot */}
+                {drivers.map((driver) => (
+                    <Marker
+                        key={`driver-${driver.id}`}
+                        position={depotPosition}
+                        icon={icons.driver}
+                    >
+                        <Popup>
+                            <div className="text-sm">
+                                <strong>
+                                    {driver.licensePlate || `Driver #${driver.id}`}
+                                </strong>
+                                <br />
+                                Tài xế: {driver.name}
+                                <br />
+                                Trạng thái: {driver.status}
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
 
                 {/* Route polylines */}
                 {routes.map((route, index) => (

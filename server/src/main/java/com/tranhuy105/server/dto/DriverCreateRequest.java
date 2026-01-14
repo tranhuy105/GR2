@@ -11,5 +11,7 @@ public class DriverCreateRequest {
     @NotBlank(message = "Phone is required")
     private String phone;
     
-    private Long vehicleId;
+    private String licensePlate;
+    private Double batteryCapacity;
+    private Double loadCapacity;
 }
